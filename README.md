@@ -28,7 +28,7 @@ __NOTE:__ Berns can generate elements with ([standard](https://www.w3schools.com
 
 __Create an anchor element with one attribute.__
 
-`a(href: '#target') { 'Click Me!'}`
+`a(href: '#target') { 'Click Me!' }`
 
 `# => "<a href='#target'>Click Me!</a>"`
 
@@ -50,7 +50,7 @@ groceries = ['Apples', 'Milk', 'Eggs', 'Cereal', 'Juice']
 
 ul(id: 'list-id', class: 'list-class') { groceries.map { |grocery_item| li(class: 'item-class') { grocery_item } }.join }
 
-# => <ul id='list-id' class='list-class'><li class='item-class'>Apples</li><li class='item-class'>Milk</li><li class='item-class'>Eggs</li><li class='item-class'>Cereal</li><li class='item-class'>Juice</li></ul>
+# => "<ul id='list-id' class='list-class'><li class='item-class'>Apples</li><li class='item-class'>Milk</li><li class='item-class'>Eggs</li><li class='item-class'>Cereal</li><li class='item-class'>Juice</li></ul>"
 ```
 
 __NOTE:__ *`DOCTYPE` and `<!--...-->` are not currently supported.*
