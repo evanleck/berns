@@ -28,9 +28,11 @@ __NOTE:__ The `element` method can generate elements with ([standard](https://ww
 
 ### Examples
 __Create an anchor element with simple attributes.__
+
 `element(:a, href: '#target') { 'Click Me!'} # => "<a href='#target'>Click Me!</a>"`
 
 __Create an img element with a source and alt text.__
+
 `element(:img, src: '/path/to/image', alt: 'An image') # => <img src='/path/to/image' alt='An image'>`
 
 __NOTE:__ `DOCTYPE` and `<!--...-->` are not currently supported.
