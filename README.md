@@ -1,10 +1,8 @@
 # Berns
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/berns`. To experiment with that code, run `bin/console` for an interactive prompt.
+Berns is a simple Ruby utility library for generating HTML5 elements.
 
-TODO: Delete this and the text above, and describe your gem
-
-## Installation
+## Installing Berns
 
 Add this line to your application's Gemfile:
 
@@ -14,30 +12,30 @@ gem 'berns'
 
 And then execute:
 
-    $ bundle
+    $ bundle install
 
 Or install it yourself as:
 
     $ gem install berns
 
-## Usage
+## Using Berns
 
-TODO: Write usage instructions here
+Simply use the `Berns::element` method to generate and return HTML5 elements as strings by passing the tag type, any attributes and their values, and (optionally) the text/content of the element. 
 
-## Development
+`element(tag, attributes = {}, &content)`
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+__NOTE:__ The `element` method can generate elements with ([standard](https://www.w3schools.com/TAgs/default.asp)) and without ([void](http://xahlee.info/js/html5_non-closing_tag.html)) closing tags. 
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+### Examples
+__Create an anchor element with simple attributes.__
+`element(:a, href: '#target') { 'Click Me!'} # => "<a href='#target'>Click Me!</a>"`
 
-## Contributing
+__Create an img element with a source and alt text.__
+`element(:img, src: '/path/to/image', alt: 'An image') # => <img src='/path/to/image' alt='An image'>`
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/berns. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
-
+__NOTE:__ `DOCTYPE` and `<!--...-->` are not currently supported.
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
 
-## Code of Conduct
-
-Everyone interacting in the Berns project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/berns/blob/master/CODE_OF_CONDUCT.md).
+*Berns is named in recognition of the inventor of HTML, [Tim Berners-Lee](https://www.w3.org/People/Berners-Lee/).*
