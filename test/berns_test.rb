@@ -17,6 +17,16 @@ describe Berns do
     end
   end
 
+  describe '#void' do
+    it 'generates HTML elements without text' do
+      assert_equal '<br>', html.void(:br)
+    end
+
+    it 'is too dumb to know which elements should or should not be void' do
+      assert_equal "<a href='#nerds'>", html.void(:a, href: '#nerds')
+    end
+  end
+
   describe '#to_attributes' do
     it 'converts a hash into a string of HTML attribute/value pairs' do
       assert_equal "href-stuff-another='foobar' href-blerg='Flerr'", html.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' })
