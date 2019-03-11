@@ -1,5 +1,6 @@
 # frozen_string_literal: true
-require "test_helper"
+require_relative '../lib/berns'
+require 'minitest/autorun'
 
 describe Berns do
   def html
@@ -8,27 +9,27 @@ describe Berns do
 
   describe '#element' do
     it 'generates HTML elements with text from a block' do
-      assert_equal html.element(:a, href: '#nerds') { 'Nerds!' }, "<a href='#nerds'>Nerds!</a>"
+      assert_equal "<a href='#nerds'>Nerds!</a>", html.element(:a, href: '#nerds') { 'Nerds!' }
     end
 
     it 'is too dumb to know which elements should or should not contain text' do
-      assert_equal html.element(:br) { 'ORLY' }, '<br>ORLY</br>'
+      assert_equal '<br>ORLY</br>', html.element(:br) { 'ORLY' }
     end
   end
 
   describe '#to_attributes' do
     it 'converts a hash into a string of HTML attribute/value pairs' do
-      assert_equal html.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' }), "href-stuff-another='foobar' href-blerg='Flerr'"
+      assert_equal "href-stuff-another='foobar' href-blerg='Flerr'", html.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' })
     end
   end
 
   describe '#to_attribute' do
     it 'returns the attribute when passed true as the value' do
-      assert_equal html.to_attribute('nerf', true), 'nerf'
+      assert_equal 'nerf', html.to_attribute('nerf', true)
     end
 
     it 'returns an empty string when passed false as the value' do
-      assert_equal html.to_attribute('nerf', false), ''
+      assert_equal '', html.to_attribute('nerf', false)
     end
 
     it 'returns attribute/value pairs' do
@@ -51,7 +52,7 @@ describe Berns do
   describe 'VOID' do
     Berns::VOID.each do |elm|
       it "generates #{ elm } void elements from the html shortcut method" do
-        assert_equal "<#{elm}>", html.send(elm)
+        assert_equal "<#{ elm }>", html.send(elm)
       end
     end
   end
