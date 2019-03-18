@@ -1,5 +1,8 @@
 # Berns
 
+[![Gem Version](https://badge.fury.io/rb/berns.svg)](https://badge.fury.io/rb/berns)
+[![Build Status](https://secure.travis-ci.org/evanleck/berns.svg)](https://travis-ci.org/evanleck/berns)
+
 A utility library for generating HTML strings.
 
 ## Installation
