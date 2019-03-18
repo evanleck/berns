@@ -1,33 +1,32 @@
 # frozen_string_literal: true
-require "berns/version"
-
+# A utility library for generating HTML strings
 module Berns
+  VERSION = '1.0.0'
+
   SPACE = ' '
   EMPTY = ''
 
   # Full list of void elements - http://xahlee.info/js/html5_non-closing_tag.html
-  VOID = %i[area base br col embed hr img input link menuitem meta param source track wbr]
+  VOID = %i[area base br col embed hr img input link menuitem meta param source track wbr].freeze
 
   # Full list of standard HTML5 elements - https://www.w3schools.com/TAgs/default.asp
-  STANDARD = %i[a abbr address article aside audio b bdi bdo blockquote body button canvas caption cite code colgroup datalist dd del details dfn dialog div dl dt em fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header html i iframe ins kbd label legend li main map mark menu meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script section select small span strong style sub summary table tbody td template textarea tfoot th thead time title tr u ul var video]
+  STANDARD = %i[a abbr address article aside audio b bdi bdo blockquote body button canvas caption cite code colgroup datalist dd del details dfn dialog div dl dt em fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header html i iframe ins kbd label legend li main map mark menu meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script section select small span strong style sub summary table tbody td template textarea tfoot th thead time title tr u ul var video].freeze
 
-  VOID.each do |element|
-    define_singleton_method(element) do |arguments = {}|
-      # Move stuff around unless the attributes are empty.
-      attrs = to_attributes(arguments)
-      attrs = " #{ attrs }" unless attrs.empty?
-
-      "<#{ element }#{ attrs }>"
-    end
-  end
-
+  # Dynamically defined methods that are simple proxies to {Markup#element}.
   STANDARD.each do |elm|
-    define_singleton_method(elm) do |arguments = {}, &content|
-      Berns.element(elm, arguments, &content)
+    define_singleton_method(elm) do |arguments = {}, &block|
+      element(elm, arguments, &block)
     end
   end
 
-  # Generate a simple HTML5 element.
+  # Dynamically defined methods that are simple proxies to {Markup#void}.
+  VOID.each do |elm|
+    define_singleton_method(elm) do |arguments = {}|
+      void(elm, arguments)
+    end
+  end
+
+  # Generate a simple HTML element.
   #
   # @example Create an element with simple attributes.
   #   element(:a, href: '#nerds') { 'Nerds!'} # => "<a href='#nerds'>Nerds!</a>"
@@ -36,14 +35,32 @@ module Berns
   #   The tag type to generate e.g. <a> or <script>.
   # @param attributes [Hash]
   #   A hash of attributes to add to the generated element.
-  def self.element(tag, attributes = {}, &content)
-    text = content ? content.call : EMPTY
+  # @yieldreturn [String]
+  #   The textual content of the element. May be HTML or plain text.
+  # @return [String]
+  def self.element(tag, attributes = {})
+    content = yield if block_given?
 
     # Move stuff around unless the attributes are empty.
     attrs = to_attributes(attributes)
     attrs = " #{ attrs }" unless attrs.empty?
 
-    "<#{ tag }#{ attrs }>#{ text }</#{ tag }>"
+    "<#{ tag }#{ attrs }>#{ content }</#{ tag }>"
+  end
+
+  # Same as above, but generates void elements i.e. ones without any textual
+  # content.
+  #
+  # @example Create a self-closing element.
+  #   void(:br) # => "<br>"
+  #
+  # @return [String]
+  def self.void(tag, attributes = {})
+    # Move stuff around unless the attributes are empty.
+    attrs = to_attributes(attributes)
+    attrs = " #{ attrs }" unless attrs.empty?
+
+    "<#{ tag }#{ attrs }>"
   end
 
   # Converts a hash into HTML attributes by mapping each key/value combination
