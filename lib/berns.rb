@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 # A utility library for generating HTML strings
 module Berns
-  VERSION = '1.0.0'
-
   SPACE = ' '
   EMPTY = ''
 

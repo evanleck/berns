@@ -1,19 +1,22 @@
 # frozen_string_literal: true
-require_relative 'lib/berns'
-
 Gem::Specification.new do |spec|
   spec.name = 'berns'
-  spec.version = Berns::VERSION
-  spec.authors = ['Taylor Beck']
-  spec.email = ['taylor.beck@engageft.com']
+  spec.version = '1.0.0'
+  spec.authors = ['Taylor Beck', 'Evan Lecklider']
+  spec.email = ['taylor.beck@engageft.com', 'evan@lecklider.com']
 
   spec.summary = 'A utility library for generating HTML strings.'
   spec.description = 'A utility library for generating HTML strings.'
-  spec.homepage = 'https://github.com/TaylorBeck/berns'
+  spec.homepage = 'https://github.com/evanleck/berns'
   spec.license = 'MIT'
 
   spec.files = ['lib/berns.rb']
   spec.require_paths = ['lib']
+
+  spec.metadata = {
+    'bug_tracker_uri' => 'https://github.com/evanleck/berns/issues',
+    'source_code_uri' => 'https://github.com/evanleck/berns'
+  }
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'minitest'
