@@ -4,6 +4,9 @@ module Berns
   SPACE = ' '
   EMPTY = ''
 
+  # Regular expression for basic HTML tag sanitizing.
+  SANITIZE_REGEX = /<[^>]+>/.freeze
+
   # Full list of void elements - http://xahlee.info/js/html5_non-closing_tag.html
   VOID = %i[area base br col embed hr img input link menuitem meta param source track wbr].freeze
 
@@ -22,6 +25,19 @@ module Berns
     define_singleton_method(elm) do |arguments = {}|
       void(elm, arguments)
     end
+  end
+
+  # Sanitize text input by stripping HTML tags.
+  #
+  # @example Sanitize some text, removing HTML elements.
+  #   sanitize('This <span>should be clean</span>') # => "This should be clean"
+  #
+  # @param text [String]
+  #   The string to sanitize.
+  # @return [nil, String]
+  #   nil unless a string was passed in, otherwise the sanitized string.
+  def self.sanitize(string)
+    string&.gsub(SANITIZE_REGEX, EMPTY)
   end
 
   # Generate a simple HTML element.

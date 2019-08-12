@@ -7,6 +7,16 @@ describe Berns do
     Berns
   end
 
+  describe '#sanitize' do
+    it 'removes HTML markup from strings' do
+      assert_equal 'This should be clean', html.sanitize('This <span>should be clean</span>')
+    end
+
+    it 'handles nil gracefully' do
+      assert_nil html.sanitize(nil)
+    end
+  end
+
   describe '#element' do
     it 'generates HTML elements with text from a block' do
       assert_equal "<a href='#nerds'>Nerds!</a>", html.element(:a, href: '#nerds') { 'Nerds!' }
