@@ -3,7 +3,7 @@ Gem::Specification.new do |spec|
   spec.name = 'berns'
   spec.version = '1.1.0'
   spec.authors = ['Taylor Beck', 'Evan Lecklider']
-  spec.email = ['taylor.beck@engageft.com', 'evan@lecklider.com']
+  spec.email = ['beck.taylorg@gmail.com', 'evan@lecklider.com']
 
   spec.summary = 'A utility library for generating HTML strings.'
   spec.description = 'A utility library for generating HTML strings.'
