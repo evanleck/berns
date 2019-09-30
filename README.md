@@ -31,14 +31,16 @@ All standard and void HTML elements are defined as methods on Berns, so you can
 create e.g. a link with `Berns.a`.
 
 ```rb
-Berns.a(href: 'https://duckduckgo.com') { 'Search for things!' } # => "<a href='https://duckduckgo.com'>Search for things!</a>"
+Berns.a(href: 'https://duckduckgo.com') { 'Search for things!' } # => "<a href=\"https://duckduckgo.com\">Search for things!</a>"
 ```
 
 Nested attributes will become prefixes like so:
 
 ```rb
-Berns.div(data: { controller: 'something->that#doesSomething' }) # => "<div data-controller='something->that#doesSomething'></div>"
+Berns.div(data: { controller: 'something->that#doesSomething' }) # => "<div data-controller=\"something->that#doesSomething\"></div>"
 ```
+
+Lastly, all attribute values are HTML-escaped using `CGI.escapeHTML`.
 
 ## Development
 

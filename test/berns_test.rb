@@ -19,7 +19,7 @@ describe Berns do
 
   describe '#element' do
     it 'generates HTML elements with text from a block' do
-      assert_equal "<a href='#nerds'>Nerds!</a>", html.element(:a, href: '#nerds') { 'Nerds!' }
+      assert_equal %(<a href="#nerds">Nerds!</a>), html.element(:a, href: '#nerds') { 'Nerds!' }
     end
 
     it 'is too dumb to know which elements should or should not contain text' do
@@ -33,13 +33,13 @@ describe Berns do
     end
 
     it 'is too dumb to know which elements should or should not be void' do
-      assert_equal "<a href='#nerds'>", html.void(:a, href: '#nerds')
+      assert_equal %(<a href="#nerds">), html.void(:a, href: '#nerds')
     end
   end
 
   describe '#to_attributes' do
     it 'converts a hash into a string of HTML attribute/value pairs' do
-      assert_equal "href-stuff-another='foobar' href-blerg='Flerr'", html.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' })
+      assert_equal %(href-stuff-another="foobar" href-blerg="Flerr"), html.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' })
     end
   end
 
@@ -53,11 +53,15 @@ describe Berns do
     end
 
     it 'returns attribute/value pairs' do
-      assert_equal "nerf='guns'", html.to_attribute('nerf', 'guns')
+      assert_equal %(nerf="guns"), html.to_attribute('nerf', 'guns')
     end
 
     it 'returns nested attribute/value pairs' do
-      assert_equal "nerf-toy='guns'", html.to_attribute('nerf', 'toy' => 'guns')
+      assert_equal %(nerf-toy="guns"), html.to_attribute('nerf', 'toy' => 'guns')
+    end
+
+    it 'escapes HTML and quotes' do
+      assert_equal %(foo="&lt;b&gt;bar&lt;/b&gt;-&quot;with &#39;quotes&#39;&quot;"), html.to_attribute('foo', %(<b>bar</b>-"with 'quotes'"))
     end
   end
 

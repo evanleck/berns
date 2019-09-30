@@ -1,4 +1,6 @@
 # frozen_string_literal: true
+require 'cgi/escape'
+
 # A utility library for generating HTML strings
 module Berns
   SPACE = ' '
@@ -118,7 +120,7 @@ module Berns
     when FalseClass
       EMPTY
     else
-      "#{ attribute }='#{ value }'"
+      %(#{ attribute }="#{ CGI.escapeHTML(value) }")
     end
   end
 end
