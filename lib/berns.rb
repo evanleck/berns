@@ -120,7 +120,7 @@ module Berns
     when FalseClass
       EMPTY
     else
-      %(#{ attribute }="#{ CGI.escapeHTML(value) }")
+      %(#{ attribute }="#{ CGI.escapeHTML(value.to_s) }")
     end
   end
 end

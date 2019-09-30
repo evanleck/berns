@@ -63,6 +63,12 @@ describe Berns do
     it 'escapes HTML and quotes' do
       assert_equal %(foo="&lt;b&gt;bar&lt;/b&gt;-&quot;with &#39;quotes&#39;&quot;"), html.to_attribute('foo', %(<b>bar</b>-"with 'quotes'"))
     end
+
+    it 'works with non-string values' do
+      assert_equal %(foo="4"), html.to_attribute('foo', 4)
+      assert_equal %(foo="bar"), html.to_attribute('foo', :bar)
+      assert_equal %(foo="[&quot;bar&quot;]"), html.to_attribute('foo', ['bar'])
+    end
   end
 
   describe 'STANDARD' do
