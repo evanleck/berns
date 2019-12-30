@@ -15,14 +15,14 @@ module Berns
   # Full list of standard HTML5 elements - https://www.w3schools.com/TAgs/default.asp
   STANDARD = %i[a abbr address article aside audio b bdi bdo blockquote body button canvas caption cite code colgroup datalist dd del details dfn dialog div dl dt em fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header html i iframe ins kbd label legend li main map mark menu meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script section select small span strong style sub summary table tbody td template textarea tfoot th thead time title tr u ul var video].freeze
 
-  # Dynamically defined methods that are simple proxies to {Markup#element}.
+  # Dynamically defined methods that are simple proxies to {#element}.
   STANDARD.each do |elm|
     define_singleton_method(elm) do |arguments = {}, &block|
       element(elm, arguments, &block)
     end
   end
 
-  # Dynamically defined methods that are simple proxies to {Markup#void}.
+  # Dynamically defined methods that are simple proxies to {#void}.
   VOID.each do |elm|
     define_singleton_method(elm) do |arguments = {}|
       void(elm, arguments)
