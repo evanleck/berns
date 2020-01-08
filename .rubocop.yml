@@ -6,13 +6,13 @@ AllCops:
   ExtraDetails: true
   TargetRubyVersion: 2.3
 
-Layout/AlignParameters:
+Layout/ParameterAlignment:
   EnforcedStyle: with_fixed_indentation
 
 Layout/EmptyLineAfterMagicComment:
   Enabled: false
 
-Layout/IndentFirstHashElement:
+Layout/FirstHashElementIndentation:
   EnforcedStyle: consistent
 
 Layout/MultilineOperationIndentation:
@@ -20,6 +20,9 @@ Layout/MultilineOperationIndentation:
 
 Layout/SpaceInsideStringInterpolation:
   EnforcedStyle: space
+
+Layout/LineLength:
+  Enabled: false
 
 Metrics/AbcSize:
   Enabled: false
@@ -31,9 +34,6 @@ Metrics/ClassLength:
   Enabled: false
 
 Metrics/CyclomaticComplexity:
-  Enabled: false
-
-Metrics/LineLength:
   Enabled: false
 
 Metrics/MethodLength:
