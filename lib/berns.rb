@@ -115,7 +115,7 @@ module Berns
       attribute.to_s
     when Hash
       value.map do |subattribute, subvalue|
-        "#{ attribute }-#{ to_attribute(subattribute, subvalue) }"
+        to_attribute(subattribute ? "#{ attribute }-#{ subattribute }" : attribute, subvalue)
       end.join(SPACE)
     when FalseClass
       EMPTY

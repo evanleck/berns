@@ -39,6 +39,7 @@ describe Berns do
 
   describe '#to_attributes' do
     it 'converts a hash into a string of HTML attribute/value pairs' do
+      assert_equal %(data-something data-something-another="Foo"), html.to_attributes(data: { something: { nil => true, another: 'Foo' } })
       assert_equal %(href-stuff-another="foobar" href-blerg="Flerr"), html.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' })
     end
   end
