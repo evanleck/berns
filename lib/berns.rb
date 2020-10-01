@@ -3,6 +3,7 @@ require 'cgi/escape'
 
 # A utility library for generating HTML strings
 module Berns
+  HASH = {}.freeze
   SPACE = ' '
   EMPTY = ''
 
@@ -17,15 +18,15 @@ module Berns
 
   # Dynamically defined methods that are simple proxies to {#element}.
   STANDARD.each do |elm|
-    define_singleton_method(elm) do |arguments = {}, &block|
-      element(elm, arguments, &block)
+    define_singleton_method(elm) do |attributes = HASH, &block|
+      element(elm, attributes, &block)
     end
   end
 
   # Dynamically defined methods that are simple proxies to {#void}.
   VOID.each do |elm|
-    define_singleton_method(elm) do |arguments = {}|
-      void(elm, arguments)
+    define_singleton_method(elm) do |attributes = HASH|
+      void(elm, attributes)
     end
   end
 
@@ -54,14 +55,10 @@ module Berns
   # @yieldreturn [String]
   #   The textual content of the element. May be HTML or plain text.
   # @return [String]
-  def self.element(tag, attributes = {})
-    content = yield if block_given?
+  def self.element(tag, attributes = HASH)
+    return "<#{ tag }>#{ yield if block_given? }</#{ tag }>" if attributes.empty?
 
-    # Move stuff around unless the attributes are empty.
-    attrs = to_attributes(attributes)
-    attrs = " #{ attrs }" unless attrs.empty?
-
-    "<#{ tag }#{ attrs }>#{ content }</#{ tag }>"
+    "<#{ tag } #{ to_attributes(attributes) }>#{ yield if block_given? }</#{ tag }>"
   end
 
   # Same as above, but generates void elements i.e. ones without any textual
@@ -71,12 +68,10 @@ module Berns
   #   void(:br) # => "<br>"
   #
   # @return [String]
-  def self.void(tag, attributes = {})
-    # Move stuff around unless the attributes are empty.
-    attrs = to_attributes(attributes)
-    attrs = " #{ attrs }" unless attrs.empty?
+  def self.void(tag, attributes = HASH)
+    return "<#{ tag }>" if attributes.empty?
 
-    "<#{ tag }#{ attrs }>"
+    "<#{ tag } #{ to_attributes(attributes) }>"
   end
 
   # Converts a hash into HTML attributes by mapping each key/value combination
@@ -90,12 +85,22 @@ module Berns
   #
   # @param attributes [Hash]
   #   The hash to convert to HTML attributes.
+  #
   # @return [String]
   #   The space-joined string containing HTML attributes.
   def self.to_attributes(attributes)
-    attributes.map do |attribute, value|
-      to_attribute(attribute, value)
-    end.join(SPACE).chomp(SPACE)
+    return EMPTY if attributes.empty?
+
+    string = +''
+
+    attributes.each do |attr, value|
+      string << SPACE
+
+      to_attribute(attr, value, string)
+    end
+
+    string.strip!
+    string
   end
 
   # Converts a single attribute and value into an HTML attribute string.
@@ -107,20 +112,28 @@ module Berns
   #   The attribute key.
   # @param value [String, Boolean, Hash]
   #   The value to assign to the attribute.
+  # @param string [String, nil]
+  #   The string modify in place with attributes and values.
+  #
   # @return [String]
   #   A single HTML attribute.
-  def self.to_attribute(attribute, value)
-    case value
-    when TrueClass
-      attribute.to_s
-    when Hash
-      value.map do |subattribute, subvalue|
-        to_attribute(subattribute ? "#{ attribute }-#{ subattribute }" : attribute, subvalue)
-      end.join(SPACE)
-    when FalseClass
-      EMPTY
+  def self.to_attribute(attribute, value, string = +'')
+    if value.is_a?(FalseClass) # rubocop:disable Style/CaseLikeIf
+      # noop
+    elsif value.is_a?(TrueClass)
+      string << attribute.to_s
+    elsif value.is_a?(Hash)
+      value.each do |attr, subval|
+        string << SPACE
+
+        to_attribute(attr.nil? ? attribute : "#{ attribute }-#{ attr }", subval, string)
+      end
+
+      string.strip!
     else
-      %(#{ attribute }="#{ CGI.escapeHTML(value.to_s) }")
+      string << %(#{ attribute }="#{ CGI.escapeHTML(value.to_s) }")
     end
+
+    string
   end
 end

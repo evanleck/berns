@@ -1,10 +1,14 @@
 # http://rubocop.readthedocs.io
 # https://github.com/bbatsov/rubocop/blob/master/config/enabled.yml
+require:
+  - rubocop-performance
+
 AllCops:
   DisplayCopNames: true
   DisplayStyleGuide: true
   ExtraDetails: true
-  TargetRubyVersion: 2.3
+  NewCops: enable
+  TargetRubyVersion: 2.5
 
 Layout/ParameterAlignment:
   EnforcedStyle: with_fixed_indentation

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 Gem::Specification.new do |spec|
   spec.name = 'berns'
-  spec.version = '1.3.0'
+  spec.version = '2.0.0'
   spec.authors = ['Taylor Beck', 'Evan Lecklider']
   spec.email = ['beck.taylorg@gmail.com', 'evan@lecklider.com']
 
@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.description = 'A utility library for generating HTML strings.'
   spec.homepage = 'https://github.com/evanleck/berns'
   spec.license = 'MIT'
-  spec.required_ruby_version = '>= 2.3.0'
+  spec.required_ruby_version = '>= 2.5.0'
 
   spec.files = ['lib/berns.rb']
   spec.require_paths = ['lib']
@@ -22,4 +22,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'minitest'
   spec.add_development_dependency 'rake'
+  spec.add_development_dependency 'rubocop'
+  spec.add_development_dependency 'rubocop-performance'
 end
