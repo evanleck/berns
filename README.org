@@ -1,0 +1,117 @@
+* Berns
+
+[[https://badge.fury.io/rb/berns][[[https://badge.fury.io/rb/berns.svg]]]]
+
+A utility library for generating HTML strings.
+
+** Installation
+
+Add this line to your application's Gemfile:
+
+#+begin_src ruby
+gem 'berns'
+#+end_src
+
+And then execute:
+
+#+begin_src sh
+bundle
+#+end_src
+
+Or install it yourself as:
+
+#+begin_src sh
+gem install berns
+#+end_src
+
+** Usage
+
+All standard and void HTML elements are defined as methods on Berns, so you can
+create e.g. a link with =Berns.a=. In addition, there are methods to sanitize
+strings i.e. remove HTML from them, convert hashes into a string of HTML
+attributes, and more.
+
+*** =void(tag, attributes)=
+
+The =void= method generates a void HTML element i.e. one without any content. It
+takes either a symbol or a string and an optional hash of HTML attributes.
+
+#+begin_src ruby
+Berns.void('br') # => '<br>'
+Berns.void('br', class: 'br-class') # => '<br class="br-class">'
+#+end_src
+
+*** =element(tag, attributes) { content }=
+
+The =element= method generates a standard HTML element i.e. one with optional
+content. It takes either a symbol or a string, an optional hash of HTML
+attributes, and an optional block of content. If provided, the block should
+return a string.
+
+#+begin_src ruby
+Berns.element('div') # => '<div></div>'
+Berns.element('div', class: 'div-class') # => '<div class="div-class"></div>'
+Berns.element('div', class: 'div-class') { 'Content' } # => '<div class="div-class">Content</div>'
+#+end_src
+
+*** =to_attribute(attribute, value)=
+
+The =to_attribute= method generates an HTML attribute string. If the value is a
+hash then the attribute is treated as a prefix.
+
+#+begin_src ruby
+Berns.to_attribute('class', 'my-class another-class') # => 'class="my-class another-class"'
+Berns.to_attribute('data', { foo: 'bar' }) # => 'data-foo="bar"'
+#+end_src
+
+All attribute values are HTML-escaped using =CGI.escapeHTML=.
+
+*** =to_attributes(attributes)=
+
+The =to_attributes= method generates an HTML attribute string from a hash by
+calling =to_attribute= for each key/value pair.
+
+#+begin_src ruby
+Berns.to_attributes({ 'data' => { foo: 'bar' }, 'class' => 'my-class another-class' }) # => 'data-foo="bar" class="my-class another-class"'
+#+end_src
+
+*** =escape_html(string)=
+
+The =escape_html= method is a passthrough to =CGI.escapeHTML= and does what it
+says on the tin.
+
+#+begin_src ruby
+Berns.escape_html('<"tag"') # => '&lt;&quot;tag&quot;'
+#+end_src
+
+*** =sanitize(string)=
+
+The =sanitize= method strips HTML tags from strings.
+
+#+begin_src ruby
+Berns.sanitize('This <span>should be clean</span>') # => 'This should be clean'
+#+end_src
+
+*** Standard and void elements
+
+As mentioned above, all standard and void HTML elements are defined as singleton
+methods on the Berns module. Below is the full list of standard elements.
+
+#+begin_example
+a abbr address article aside audio b bdi bdo blockquote body button
+canvas caption cite code colgroup datalist dd del details dfn dialog div
+dl dt em fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head
+header html i iframe ins kbd label legend li main map mark menu meter nav
+noscript object ol optgroup option output p picture pre progress q rp rt
+ruby s samp script section select small span strong style sub summary
+table tbody td template textarea tfoot th thead time title tr u ul var
+video
+#+end_example
+
+
+Below is the full list of void elements that are defined as singleton methods on
+Berns.
+
+#+begin_example
+area base br col embed hr img input link menuitem meta param source track wbr
+#+end_example
