@@ -1,5 +1,9 @@
 * Berns Changelog
 
+** 3.0.3
+
+Fix a buffer overflow error.
+
 ** 3.0.2
 
 Ensure all returned strings are UTF-8 encoded.

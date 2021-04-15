@@ -122,7 +122,7 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
         if (i > 0) {
           size = size + splen + subattrlen;
 
-          char *tmp = realloc(substring, size);
+          char *tmp = realloc(substring, size + 1);
 
           if (tmp == NULL) {
             rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
@@ -134,7 +134,7 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
           stecpy(substring + size - subattrlen, RSTRING_PTR(subattr), substring + size + 1);
         } else {
           size = size + subattrlen;
-          char *tmp = realloc(substring, size);
+          char *tmp = realloc(substring, size + 1);
 
           if (tmp == NULL) {
             rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
