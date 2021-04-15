@@ -30,7 +30,7 @@ static VALUE berns_escape_html(const VALUE self, VALUE string) {
 }
 
 static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE value) {
-  const VALUE empty = rb_str_new_cstr("");
+  const VALUE empty = rb_utf8_str_new_cstr("");
 
   VALUE escaped;
   VALUE key;
@@ -116,7 +116,7 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
 
         stecpy(ptr, RSTRING_PTR(subkey), end);
 
-        subattr = berns_to_attribute(self, rb_str_new_cstr(subname), subvalue);
+        subattr = berns_to_attribute(self, rb_utf8_str_new_cstr(subname), subvalue);
         size_t subattrlen = RSTRING_LEN(subattr);
 
         if (i > 0) {
@@ -146,7 +146,7 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
         }
       }
 
-      rstring = rb_str_new_cstr(substring);
+      rstring = rb_utf8_str_new_cstr(substring);
       free(substring);
 
       return rstring;
@@ -172,7 +172,7 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
       ptr = stecpy(ptr, RSTRING_PTR(escaped), end);
       stecpy(ptr, close, end);
 
-      return rb_str_new_cstr(string);
+      return rb_utf8_str_new_cstr(string);
   }
 }
 
@@ -188,7 +188,7 @@ static VALUE berns_to_attributes(const VALUE self, const VALUE attributes) {
   const VALUE length = RARRAY_LEN(keys);
 
   if (length == 0) {
-    return rb_str_new_cstr("");
+    return rb_utf8_str_new_cstr("");
   }
 
   char *string = NULL;
@@ -230,7 +230,7 @@ static VALUE berns_to_attributes(const VALUE self, const VALUE attributes) {
     }
   }
 
-  rstring = rb_str_new_cstr(string);
+  rstring = rb_utf8_str_new_cstr(string);
   free(string);
 
   return rstring;
@@ -288,7 +288,7 @@ static VALUE berns_internal_void(VALUE tag, VALUE attributes) {
 
   stecpy(ptr, close, end);
 
-  return rb_str_new_cstr(string);
+  return rb_utf8_str_new_cstr(string);
 }
 
 static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
@@ -311,10 +311,10 @@ static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
     content = rb_yield(Qnil);
 
     if (TYPE(content) == T_NIL) {
-      content = rb_str_new_cstr("");
+      content = rb_utf8_str_new_cstr("");
     }
   } else {
-    content = rb_str_new_cstr("");
+    content = rb_utf8_str_new_cstr("");
   }
 
   StringValue(content);
@@ -357,7 +357,7 @@ static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
   ptr = stecpy(ptr, RSTRING_PTR(tag), end);
   stecpy(ptr, close, end);
 
-  return rb_str_new_cstr(string);
+  return rb_utf8_str_new_cstr(string);
 }
 
 static VALUE berns_void_element(int argc, VALUE *argv, VALUE self) {
@@ -367,77 +367,77 @@ static VALUE berns_void_element(int argc, VALUE *argv, VALUE self) {
 
 static VALUE berns_area_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("area"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("area"), argv[0]);
 }
 
 static VALUE berns_base_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("base"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("base"), argv[0]);
 }
 
 static VALUE berns_br_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("br"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("br"), argv[0]);
 }
 
 static VALUE berns_col_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("col"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("col"), argv[0]);
 }
 
 static VALUE berns_embed_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("embed"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("embed"), argv[0]);
 }
 
 static VALUE berns_hr_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("hr"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("hr"), argv[0]);
 }
 
 static VALUE berns_img_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("img"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("img"), argv[0]);
 }
 
 static VALUE berns_input_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("input"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("input"), argv[0]);
 }
 
 static VALUE berns_link_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("link"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("link"), argv[0]);
 }
 
 static VALUE berns_menuitem_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("menuitem"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("menuitem"), argv[0]);
 }
 
 static VALUE berns_meta_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("meta"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("meta"), argv[0]);
 }
 
 static VALUE berns_param_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("param"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("param"), argv[0]);
 }
 
 static VALUE berns_source_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("source"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("source"), argv[0]);
 }
 
 static VALUE berns_track_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("track"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("track"), argv[0]);
 }
 
 static VALUE berns_wbr_element(int argc, VALUE *argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_str_new_cstr("wbr"), argv[0]);
+  return berns_internal_void(rb_utf8_str_new_cstr("wbr"), argv[0]);
 }
 
 static VALUE berns_element(int argc, VALUE* argv, VALUE self) {
@@ -447,472 +447,472 @@ static VALUE berns_element(int argc, VALUE* argv, VALUE self) {
 
 static VALUE berns_a_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("a"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("a"), argv[0]);
 }
 
 static VALUE berns_abbr_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("abbr"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("abbr"), argv[0]);
 }
 
 static VALUE berns_address_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("address"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("address"), argv[0]);
 }
 
 static VALUE berns_article_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("article"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("article"), argv[0]);
 }
 
 static VALUE berns_aside_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("aside"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("aside"), argv[0]);
 }
 
 static VALUE berns_audio_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("audio"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("audio"), argv[0]);
 }
 
 static VALUE berns_b_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("b"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("b"), argv[0]);
 }
 
 static VALUE berns_bdi_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("bdi"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("bdi"), argv[0]);
 }
 
 static VALUE berns_bdo_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("bdo"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("bdo"), argv[0]);
 }
 
 static VALUE berns_blockquote_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("blockquote"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("blockquote"), argv[0]);
 }
 
 static VALUE berns_body_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("body"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("body"), argv[0]);
 }
 
 static VALUE berns_button_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("button"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("button"), argv[0]);
 }
 
 static VALUE berns_canvas_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("canvas"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("canvas"), argv[0]);
 }
 
 static VALUE berns_caption_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("caption"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("caption"), argv[0]);
 }
 
 static VALUE berns_cite_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("cite"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("cite"), argv[0]);
 }
 
 static VALUE berns_code_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("code"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("code"), argv[0]);
 }
 
 static VALUE berns_colgroup_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("colgroup"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("colgroup"), argv[0]);
 }
 
 static VALUE berns_datalist_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("datalist"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("datalist"), argv[0]);
 }
 
 static VALUE berns_dd_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("dd"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("dd"), argv[0]);
 }
 
 static VALUE berns_del_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("del"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("del"), argv[0]);
 }
 
 static VALUE berns_details_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("details"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("details"), argv[0]);
 }
 
 static VALUE berns_dfn_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("dfn"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("dfn"), argv[0]);
 }
 
 static VALUE berns_dialog_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("dialog"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("dialog"), argv[0]);
 }
 
 static VALUE berns_div_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("div"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("div"), argv[0]);
 }
 
 static VALUE berns_dl_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("dl"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("dl"), argv[0]);
 }
 
 static VALUE berns_dt_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("dt"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("dt"), argv[0]);
 }
 
 static VALUE berns_em_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("em"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("em"), argv[0]);
 }
 
 static VALUE berns_fieldset_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("fieldset"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("fieldset"), argv[0]);
 }
 
 static VALUE berns_figcaption_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("figcaption"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("figcaption"), argv[0]);
 }
 
 static VALUE berns_figure_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("figure"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("figure"), argv[0]);
 }
 
 static VALUE berns_footer_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("footer"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("footer"), argv[0]);
 }
 
 static VALUE berns_form_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("form"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("form"), argv[0]);
 }
 
 static VALUE berns_h1_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("h1"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("h1"), argv[0]);
 }
 
 static VALUE berns_h2_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("h2"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("h2"), argv[0]);
 }
 
 static VALUE berns_h3_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("h3"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("h3"), argv[0]);
 }
 
 static VALUE berns_h4_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("h4"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("h4"), argv[0]);
 }
 
 static VALUE berns_h5_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("h5"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("h5"), argv[0]);
 }
 
 static VALUE berns_h6_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("h6"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("h6"), argv[0]);
 }
 
 static VALUE berns_head_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("head"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("head"), argv[0]);
 }
 
 static VALUE berns_header_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("header"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("header"), argv[0]);
 }
 
 static VALUE berns_html_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("html"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("html"), argv[0]);
 }
 
 static VALUE berns_i_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("i"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("i"), argv[0]);
 }
 
 static VALUE berns_iframe_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("iframe"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("iframe"), argv[0]);
 }
 
 static VALUE berns_ins_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("ins"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("ins"), argv[0]);
 }
 
 static VALUE berns_kbd_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("kbd"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("kbd"), argv[0]);
 }
 
 static VALUE berns_label_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("label"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("label"), argv[0]);
 }
 
 static VALUE berns_legend_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("legend"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("legend"), argv[0]);
 }
 
 static VALUE berns_li_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("li"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("li"), argv[0]);
 }
 
 static VALUE berns_main_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("main"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("main"), argv[0]);
 }
 
 static VALUE berns_map_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("map"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("map"), argv[0]);
 }
 
 static VALUE berns_mark_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("mark"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("mark"), argv[0]);
 }
 
 static VALUE berns_menu_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("menu"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("menu"), argv[0]);
 }
 
 static VALUE berns_meter_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("meter"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("meter"), argv[0]);
 }
 
 static VALUE berns_nav_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("nav"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("nav"), argv[0]);
 }
 
 static VALUE berns_noscript_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("noscript"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("noscript"), argv[0]);
 }
 
 static VALUE berns_object_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("object"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("object"), argv[0]);
 }
 
 static VALUE berns_ol_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("ol"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("ol"), argv[0]);
 }
 
 static VALUE berns_optgroup_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("optgroup"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("optgroup"), argv[0]);
 }
 
 static VALUE berns_option_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("option"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("option"), argv[0]);
 }
 
 static VALUE berns_output_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("output"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("output"), argv[0]);
 }
 
 static VALUE berns_p_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("p"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("p"), argv[0]);
 }
 
 static VALUE berns_picture_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("picture"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("picture"), argv[0]);
 }
 
 static VALUE berns_pre_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("pre"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("pre"), argv[0]);
 }
 
 static VALUE berns_progress_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("progress"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("progress"), argv[0]);
 }
 
 static VALUE berns_q_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("q"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("q"), argv[0]);
 }
 
 static VALUE berns_rp_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("rp"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("rp"), argv[0]);
 }
 
 static VALUE berns_rt_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("rt"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("rt"), argv[0]);
 }
 
 static VALUE berns_ruby_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("ruby"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("ruby"), argv[0]);
 }
 
 static VALUE berns_s_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("s"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("s"), argv[0]);
 }
 
 static VALUE berns_samp_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("samp"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("samp"), argv[0]);
 }
 
 static VALUE berns_script_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("script"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("script"), argv[0]);
 }
 
 static VALUE berns_section_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("section"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("section"), argv[0]);
 }
 
 static VALUE berns_select_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("select"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("select"), argv[0]);
 }
 
 static VALUE berns_small_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("small"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("small"), argv[0]);
 }
 
 static VALUE berns_span_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("span"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("span"), argv[0]);
 }
 
 static VALUE berns_strong_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("strong"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("strong"), argv[0]);
 }
 
 static VALUE berns_style_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("style"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("style"), argv[0]);
 }
 
 static VALUE berns_sub_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("sub"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("sub"), argv[0]);
 }
 
 static VALUE berns_summary_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("summary"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("summary"), argv[0]);
 }
 
 static VALUE berns_table_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("table"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("table"), argv[0]);
 }
 
 static VALUE berns_tbody_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("tbody"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("tbody"), argv[0]);
 }
 
 static VALUE berns_td_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("td"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("td"), argv[0]);
 }
 
 static VALUE berns_template_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("template"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("template"), argv[0]);
 }
 
 static VALUE berns_textarea_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("textarea"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("textarea"), argv[0]);
 }
 
 static VALUE berns_tfoot_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("tfoot"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("tfoot"), argv[0]);
 }
 
 static VALUE berns_th_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("th"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("th"), argv[0]);
 }
 
 static VALUE berns_thead_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("thead"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("thead"), argv[0]);
 }
 
 static VALUE berns_time_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("time"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("time"), argv[0]);
 }
 
 static VALUE berns_title_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("title"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("title"), argv[0]);
 }
 
 static VALUE berns_tr_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("tr"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("tr"), argv[0]);
 }
 
 static VALUE berns_u_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("u"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("u"), argv[0]);
 }
 
 static VALUE berns_ul_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("ul"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("ul"), argv[0]);
 }
 
 static VALUE berns_var_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("var"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("var"), argv[0]);
 }
 
 static VALUE berns_video_element(int argc, VALUE* argv, VALUE self) {
   rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_str_new_cstr("video"), argv[0]);
+  return berns_internal_element(rb_utf8_str_new_cstr("video"), argv[0]);
 }
 
 void Init_berns() {

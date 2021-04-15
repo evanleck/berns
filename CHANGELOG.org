@@ -1,5 +1,14 @@
 * Berns Changelog
 
+** 3.0.2
+
+Ensure all returned strings are UTF-8 encoded.
+
+** 3.0.1
+
+Fix a regression when content blocks are nil. They should be treated the same as
+if they are not there instead of throwing an error.
+
 ** 3.0.0
 
 Version 3.0 is another mostly API-compatible refactor of Berns, this time in

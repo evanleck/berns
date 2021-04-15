@@ -85,6 +85,12 @@ class BernsTest < Minitest::Test
     assert_equal '<div></div>', Berns.element('div') { nil }
   end
 
+  def test_string_encoding
+    assert_equal Encoding::UTF_8, Berns.element('div').encoding
+    assert_equal Encoding::UTF_8, Berns.void('br').encoding
+    assert_equal Encoding::UTF_8, Berns.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' }).encoding
+  end
+
   def test_void_element_methods
     %i[area base br col embed hr img input link menuitem meta param source track wbr].each do |void|
       assert_equal "<#{ void }>", Berns.send(void)
