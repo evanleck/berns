@@ -1,6 +1,6 @@
 * Berns
 
-[[https://badge.fury.io/rb/berns][[[https://badge.fury.io/rb/berns.svg]]]]
+[[https://badge.fury.io/rb/berns.svg]]
 
 A utility library for generating HTML strings.
 
