@@ -1,0 +1,129 @@
+* Berns Changelog
+
+** 3.0.0
+
+Version 3.0 is another mostly API-compatible refactor of Berns, this time in
+blazing fast C! I debated simply calling this version 2.1.0 but because it's a
+complete rewrite it didn't seem right to do a simple point release and there may
+be corner cases that I've not accounted for in this new C-backed version.
+
+Running the same benchmarks as from 2.0 but pitting 2.0 against 3.0 yields some
+great speed improvements, particularly for the =empty= and =simple= cases.
+
+/These benchmarks were performed on a desktop with a AMD Ryzen 5 3600X 6-Core
+Processor running Linux Mint 20.1 and kernel 5.4./
+
+Before:
+
+#+begin_example
+ empty      1.668M (± 0.6%) i/s -      8.356M in   5.011099s
+simple    442.102k (± 1.3%) i/s -      2.214M in   5.008068s
+nested    267.716k (± 0.4%) i/s -      1.357M in   5.068747s
+#+end_example
+
+After:
+
+#+begin_example
+ empty      3.573M (± 1.2%) i/s -     17.881M in   5.005001s
+simple    840.631k (± 0.6%) i/s -      4.253M in   5.059771s
+nested    267.281k (± 0.5%) i/s -      1.347M in   5.037887s
+#+end_example
+
+With both empty and simple attributes we see performance effectively double, and
+with nested attributes performance remains more or less the same.
+
+This is another set of fairly contrived benchmarks, testing a singleton method,
+=void= call, and =element= call against each other.
+
+Before:
+
+#+begin_example
+            br      3.061M (± 0.8%) i/s -     15.613M in   5.100154s
+    void("br")      6.141M (± 1.4%) i/s -     30.990M in   5.047338s
+element("div")      2.789M (± 0.6%) i/s -     14.171M in   5.080626s
+#+end_example
+
+After:
+
+#+begin_example
+            br      8.155M (± 1.0%) i/s -     41.339M in   5.069681s
+    void("br")      9.782M (± 1.5%) i/s -     49.096M in   5.020114s
+element("div")      6.769M (± 1.1%) i/s -     33.983M in   5.021362s
+#+end_example
+
+Lastly, benchmarking =to_attributes= with the following hash as the only
+argument shows about double the performance with 3.0.
+
+#+begin_src ruby
+ATTRS = { this: 'tag', should: 'work', data: { foo: 'bar', bar: { baz: 'foo' } } }.freeze
+#+end_src
+
+Before:
+
+#+begin_example
+to_attributes    228.829k (± 1.3%) i/s -      1.159M in   5.065714s
+#+end_example
+
+After:
+
+#+begin_example
+to_attributes    457.387k (± 1.2%) i/s -      2.305M in   5.041036s
+#+end_example
+
+** 2.0.0
+
+Version 2.0 is a mostly API-compatible refactor of all of the core
+methods that make up Berns. The goal is to improve performance, mostly
+using mutable strings and inlining variables that were otherwise short
+lived.
+
+In addition, the target Ruby version has been raised to 2.5 or later.
+2.4 has reached its end of life.
+
+Running this benchmarking code:
+
+#+begin_src ruby
+Benchmark.ips do |x|
+  x.report('empty') { Berns.element(:a) { 'Link to something' } }
+  x.report('simple') { Berns.element(:a, { href: 'Something', class: 'my-class' }) { 'Link to something' } }
+  x.report('nested') { Berns.element(:a, { href: 'Something', class: 'my-class', data: { something: 'Else' } }) { 'Link to something' } }
+
+  x.compare!
+end
+#+end_src
+
+Before:
+
+#+begin_example
+ empty    993.521k (± 1.7%) i/s -      5.062M in   5.096368s
+simple    340.795k (± 0.4%) i/s -      1.729M in   5.074101s
+nested    215.160k (± 1.0%) i/s -      1.081M in   5.025324s
+#+end_example
+
+After:
+
+#+begin_example
+ empty      1.769M (± 1.9%) i/s -      9.012M in   5.094973s
+simple    441.020k (± 1.0%) i/s -      2.233M in   5.063326s
+nested    280.255k (± 3.0%) i/s -      1.400M in   5.001009s
+#+end_example
+
+With empty attributes we see ~ 100% increase in iterations per second,
+with simple attributes we see ~ 30% increase in the same, and with
+nested attributes we see ~ 30% increase as well.
+
+** 1.3.0
+
+With version 1.3, nested HTML attributes can be created with nil keys
+and boolean values to produce e.g. "data-foo data-foo-bar='whatever'"
+from =data: { foo: { nil => true, bar: 'whatever' } }=
+
+** 1.2.0 - 1.2.2
+
+Starting with version 1.2, Berns will now HTML-escape all attribute
+values using =CGI.escapeHTML=. This should prevent attribute values from
+escaping themselves and injecting HTML into the DOM.
+
+** 1.1.0
+
+- Add =#sanitize= method.
