@@ -309,6 +309,10 @@ static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
 
   if (rb_block_given_p()) {
     content = rb_yield(Qnil);
+
+    if (TYPE(content) == T_NIL) {
+      content = rb_str_new_cstr("");
+    }
   } else {
     content = rb_str_new_cstr("");
   }

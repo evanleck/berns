@@ -81,6 +81,10 @@ class BernsTest < Minitest::Test
     assert_equal '<div>Content</div>', Berns.element('div') { 'Content' }
   end
 
+  def test_element_with_nil_block
+    assert_equal '<div></div>', Berns.element('div') { nil }
+  end
+
   def test_void_element_methods
     %i[area base br col embed hr img input link menuitem meta param source track wbr].each do |void|
       assert_equal "<#{ void }>", Berns.send(void)
