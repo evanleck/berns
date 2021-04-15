@@ -1,5 +1,9 @@
 * Berns Changelog
 
+** 3.0.4
+
+Fix an =ArgumentError= when passing a nested empty hash to =to_attribute=.
+
 ** 3.0.3
 
 Fix a buffer overflow error.

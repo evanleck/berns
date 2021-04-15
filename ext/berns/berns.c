@@ -72,6 +72,10 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
       keys = rb_funcall(value, rb_intern("keys"), 0);
       length = RARRAY_LEN(keys);
 
+      if (length == 0) {
+        return rb_utf8_str_new_cstr("");
+      }
+
       char *substring = NULL;
       size_t size = 0;
 

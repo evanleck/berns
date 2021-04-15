@@ -45,6 +45,7 @@ class BernsTest < Minitest::Test
 
   def test_empty_attributes
     assert_equal '', Berns.to_attributes({})
+    assert_equal '', Berns.to_attributes({ data: {} })
   end
 
   def test_escaped_attributes
