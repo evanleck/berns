@@ -1,5 +1,16 @@
 * Berns Changelog
 
+** 3.0.5
+
+Fix a regression when content blocks are false. They should be treated the same
+as if they are not there instead of throwing an error.
+
+This allows the use of conditions in combination with content blocks e.g.
+
+#+begin_src ruby
+Berns.div { user_can_view? && "You can see this sometimes" }
+#+end_src
+
 ** 3.0.4
 
 Fix an =ArgumentError= when passing a nested empty hash to =to_attribute=.

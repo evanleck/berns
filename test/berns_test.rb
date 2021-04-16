@@ -86,6 +86,10 @@ class BernsTest < Minitest::Test
     assert_equal '<div></div>', Berns.element('div') { nil }
   end
 
+  def test_element_with_false_block
+    assert_equal '<div></div>', Berns.element('div') { false }
+  end
+
   def test_string_encoding
     assert_equal Encoding::UTF_8, Berns.element('div').encoding
     assert_equal Encoding::UTF_8, Berns.void('br').encoding
