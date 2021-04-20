@@ -26,10 +26,7 @@ gem install berns
 
 ** Usage
 
-All standard and void HTML elements are defined as methods on Berns, so you can
-create e.g. a link with =Berns.a=. In addition, there are methods to sanitize
-strings i.e. remove HTML from them, convert hashes into a string of HTML
-attributes, and more.
+Note that all return string values will be UTF-8 encoded.
 
 *** =void(tag, attributes)=
 
@@ -94,8 +91,8 @@ Berns.sanitize('This <span>should be clean</span>') # => 'This should be clean'
 
 *** Standard and void elements
 
-As mentioned above, all standard and void HTML elements are defined as singleton
-methods on the Berns module. Below is the full list of standard elements.
+All standard and void HTML elements are defined as methods on Berns, so you can
+create e.g. a link with =Berns.a=. Below is the full list of standard elements.
 
 #+begin_example
 a abbr address article aside audio b bdi bdo blockquote body button
