@@ -4,6 +4,8 @@
 /_yardoc/
 /coverage/
 /doc/
+/lib/berns/berns.bundle
+/lib/berns/berns.so
 /pkg/
 /spec/reports/
 /tmp/
