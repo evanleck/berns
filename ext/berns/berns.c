@@ -323,8 +323,6 @@ static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
     content = rb_utf8_str_new_cstr("");
   }
 
-  StringValue(content);
-
   const char *open = "<";
   const char *close = ">";
   const char *slash = "/";
