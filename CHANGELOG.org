@@ -1,5 +1,11 @@
 * Berns Changelog
 
+** 3.0.6
+
+Convert non-string blocks of content into strings. This allows, for example,
+passing numeric objects as blocks of content to standard element methods without
+first having to convert them to strings.
+
 ** 3.0.5
 
 Fix a regression when content blocks are false. They should be treated the same

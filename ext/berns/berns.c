@@ -316,6 +316,8 @@ static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
 
     if (TYPE(content) == T_NIL || TYPE(content) == T_FALSE) {
       content = rb_utf8_str_new_cstr("");
+    } else if (TYPE(content) != T_STRING) {
+      content = rb_funcall(content, rb_intern("to_s"), 0);
     }
   } else {
     content = rb_utf8_str_new_cstr("");

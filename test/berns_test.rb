@@ -2,6 +2,7 @@
 $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 
 require 'berns'
+require 'bigdecimal'
 require 'minitest/autorun'
 
 class BernsTest < Minitest::Test
@@ -88,6 +89,22 @@ class BernsTest < Minitest::Test
 
   def test_element_with_false_block
     assert_equal '<div></div>', Berns.element('div') { false }
+  end
+
+  def test_element_with_integer_block
+    assert_equal '<div>3</div>', Berns.element('div') { 3 }
+  end
+
+  def test_element_with_bigdecimal_block
+    assert_equal '<div>0.3e1</div>', Berns.element('div') { BigDecimal('3.0') }
+  end
+
+  def test_element_with_array_block
+    assert_equal '<div>["one", "or", "another"]</div>', Berns.element('div') { %w[one or another] }
+  end
+
+  def test_element_with_hash_block
+    assert_equal '<div>{"one"=>"oranother"}</div>', Berns.element('div') { { 'one' => 'oranother' } }
   end
 
   def test_string_encoding
