@@ -1,6 +1,8 @@
 #include "ruby.h"
 #include "extconf.h"
 
+static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE value);
+
 /*
  * "Safe strcpy" - https://twitter.com/hyc_symas/status/1102573036534972416?s=12
 */
@@ -29,18 +31,105 @@ static VALUE berns_escape_html(const VALUE self, VALUE string) {
   return rb_funcall(cgi, escape, 1, string);
 }
 
-static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE value) {
-  const VALUE empty = rb_utf8_str_new_cstr("");
+static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, const VALUE value) {
+  const VALUE keys = rb_funcall(value, rb_intern("keys"), 0);
+  const VALUE values = rb_funcall(value, rb_intern("values"), 0);
+  const VALUE length = RARRAY_LEN(keys);
 
-  VALUE escaped;
-  VALUE key;
-  VALUE keys;
-  VALUE length;
+  if (length == 0) {
+    return rb_utf8_str_new_cstr("");
+  }
+
   VALUE rstring;
   VALUE subattr;
   VALUE subkey;
-  VALUE subvalue;
 
+  const char *dash = "-";
+  const char *space = " ";
+
+  const size_t dlen = strlen(dash);
+  const size_t splen = strlen(space);
+  const size_t alen = RSTRING_LEN(attribute);
+
+  char *substring = NULL;
+  size_t size = 0;
+
+  for (unsigned int i = 0; i < length; i++) {
+    subkey = rb_ary_entry(keys, i);
+
+    switch(TYPE(subkey)) {
+      case T_STRING:
+        break;
+      case T_NIL:
+        subkey = rb_utf8_str_new_cstr("");
+        break;
+      case T_SYMBOL:
+        subkey = rb_sym_to_s(subkey);
+        break;
+      default:
+        if (substring != NULL) {
+          free(substring);
+        }
+
+        rb_raise(rb_eTypeError, "Berns.to_attribute value keys must be Strings or Symbols.");
+        break;
+    }
+
+    size_t total = alen + 1;
+    size_t sklen = RSTRING_LEN(subkey);
+
+    if (sklen > 0) {
+      total += dlen + sklen + 1;
+    }
+
+    char subname[total];
+    char *ptr;
+    char *end = subname + sizeof(subname);
+
+    ptr = stecpy(subname, RSTRING_PTR(attribute), end);
+
+    if (sklen > 0) {
+      ptr = stecpy(ptr, dash, end);
+    }
+
+    stecpy(ptr, RSTRING_PTR(subkey), end);
+
+    subattr = berns_to_attribute(self, rb_utf8_str_new_cstr(subname), rb_ary_entry(values, i));
+    size_t subattrlen = RSTRING_LEN(subattr);
+
+    if (i > 0) {
+      size = size + splen + subattrlen;
+      char *tmp = realloc(substring, size + 1);
+
+      if (tmp == NULL) {
+        rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
+      }
+
+      substring = tmp;
+
+      stecpy(substring + size - splen - subattrlen, space, substring + size);
+      stecpy(substring + size - subattrlen, RSTRING_PTR(subattr), substring + size + 1);
+    } else {
+      size = size + subattrlen;
+      char *tmp = realloc(substring, size + 1);
+
+      if (tmp == NULL) {
+        rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
+      }
+
+      substring = tmp;
+
+      stecpy(substring + size - subattrlen, RSTRING_PTR(subattr), substring + size + 1);
+    }
+  }
+
+  rstring = rb_utf8_str_new_cstr(substring);
+  free(substring);
+
+  return rstring;
+}
+
+static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE value) {
   switch(TYPE(attribute)) {
     case T_STRING:
       break;
@@ -52,108 +141,22 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
       break;
   }
 
+  VALUE escaped;
+
   const char *close = "\"";
-  const char *dash = "-";
   const char *equals = "=\"";
-  const char *space = " ";
 
   const size_t clen = strlen(close);
-  const size_t dlen = strlen(dash);
   const size_t eqlen = strlen(equals);
-  const size_t splen = strlen(space);
 
   switch(TYPE(value)) {
     case T_NIL:
     case T_TRUE:
       return attribute;
     case T_FALSE:
-      return empty;
+      return rb_utf8_str_new_cstr("");
     case T_HASH:
-      keys = rb_funcall(value, rb_intern("keys"), 0);
-      length = RARRAY_LEN(keys);
-
-      if (length == 0) {
-        return rb_utf8_str_new_cstr("");
-      }
-
-      char *substring = NULL;
-      size_t size = 0;
-
-      for (unsigned int i = 0; i < length; i++) {
-        key = rb_ary_entry(keys, i);
-        subvalue = rb_hash_aref(value, key);
-
-        switch(TYPE(key)) {
-          case T_NIL:
-            subkey = empty;
-            break;
-          case T_STRING:
-            subkey = key;
-            break;
-          case T_SYMBOL:
-            subkey = rb_sym_to_s(key);
-            break;
-          default:
-            if (substring != NULL) {
-              free(substring);
-            }
-
-            rb_raise(rb_eTypeError, "Berns.to_attribute value keys must be Strings or Symbols.");
-            break;
-        }
-
-        size_t total = RSTRING_LEN(attribute) + 1;
-
-        if (RSTRING_LEN(subkey) > 0) {
-          total = RSTRING_LEN(attribute) + dlen + RSTRING_LEN(subkey) + 1;
-        }
-
-        char subname[total];
-        char *ptr;
-        char *end = subname + sizeof(subname);
-
-        ptr = stecpy(subname, RSTRING_PTR(attribute), end);
-
-        if (RSTRING_LEN(subkey) > 0) {
-          ptr = stecpy(ptr, dash, end);
-        }
-
-        stecpy(ptr, RSTRING_PTR(subkey), end);
-
-        subattr = berns_to_attribute(self, rb_utf8_str_new_cstr(subname), subvalue);
-        size_t subattrlen = RSTRING_LEN(subattr);
-
-        if (i > 0) {
-          size = size + splen + subattrlen;
-
-          char *tmp = realloc(substring, size + 1);
-
-          if (tmp == NULL) {
-            rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
-          }
-
-          substring = tmp;
-
-          stecpy(substring + size - splen - subattrlen, space, substring + size);
-          stecpy(substring + size - subattrlen, RSTRING_PTR(subattr), substring + size + 1);
-        } else {
-          size = size + subattrlen;
-          char *tmp = realloc(substring, size + 1);
-
-          if (tmp == NULL) {
-            rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
-          }
-
-          substring = tmp;
-
-          stecpy(substring + size - subattrlen, RSTRING_PTR(subattr), substring + size + 1);
-        }
-      }
-
-      rstring = rb_utf8_str_new_cstr(substring);
-      free(substring);
-
-      return rstring;
+      return berns_to_subattribute(self, attribute, value);
     default:
       switch (TYPE(value)) {
         case T_STRING:
