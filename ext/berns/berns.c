@@ -1,6 +1,27 @@
 #include "ruby.h"
 #include "extconf.h"
 
+static const char *attr_close = "\"";
+static const size_t attr_clen = 1;
+
+static const char *attr_equals = "=\"";
+static const size_t attr_eqlen = 2;
+
+static const char *dash = "-";
+static const size_t dlen = 1;
+
+static const char *space = " ";
+static const size_t splen = 1;
+
+static const char *tag_open = "<";
+static const size_t tag_olen = 1;
+
+static const char *tag_close = ">";
+static const size_t tag_clen = 1;
+
+static const char *slash = "/";
+static const size_t sllen = 1;
+
 static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE value);
 
 /*
@@ -44,11 +65,6 @@ static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, cons
   VALUE subattr;
   VALUE subkey;
 
-  const char *dash = "-";
-  const char *space = " ";
-
-  const size_t dlen = strlen(dash);
-  const size_t splen = strlen(space);
   const size_t alen = RSTRING_LEN(attribute);
 
   char *substring = NULL;
@@ -143,12 +159,6 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
 
   VALUE escaped;
 
-  const char *close = "\"";
-  const char *equals = "=\"";
-
-  const size_t clen = strlen(close);
-  const size_t eqlen = strlen(equals);
-
   switch(TYPE(value)) {
     case T_NIL:
     case T_TRUE:
@@ -170,14 +180,14 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
           break;
       }
 
-      char string[RSTRING_LEN(attribute) + eqlen + RSTRING_LEN(escaped) + clen + 1];
+      char string[RSTRING_LEN(attribute) + attr_eqlen + RSTRING_LEN(escaped) + attr_clen + 1];
       char *ptr;
       char *end = string + sizeof(string);
 
       ptr = stecpy(string, RSTRING_PTR(attribute), end);
-      ptr = stecpy(ptr, equals, end);
+      ptr = stecpy(ptr, attr_equals, end);
       ptr = stecpy(ptr, RSTRING_PTR(escaped), end);
-      stecpy(ptr, close, end);
+      stecpy(ptr, attr_close, end);
 
       return rb_utf8_str_new_cstr(string);
   }
@@ -201,15 +211,10 @@ static VALUE berns_to_attributes(const VALUE self, const VALUE attributes) {
   char *string = NULL;
   size_t size = 0; /* IN BYTES */
 
-  const char *space = " ";
-  const size_t splen = strlen(space);
-
-  size_t alen;
-
   for (unsigned int i = 0; i < length; i++) {
     key = rb_ary_entry(keys, i);
     attribute = berns_to_attribute(self, key, rb_hash_aref(attributes, key));
-    alen = RSTRING_LEN(attribute);
+    size_t alen = RSTRING_LEN(attribute);
 
     if (i > 0) {
       char *tmp = realloc(string, size + alen + splen + 1);
@@ -257,14 +262,6 @@ static VALUE berns_internal_void(VALUE tag, VALUE attributes) {
       break;
   }
 
-  const char *open = "<";
-  const char *close = ">";
-  const char *space = " ";
-
-  const size_t olen = strlen(open);
-  const size_t clen = strlen(close);
-  const size_t slen = strlen(space);
-
   size_t tlen = RSTRING_LEN(tag);
   size_t total;
   size_t alen = 0;
@@ -274,18 +271,18 @@ static VALUE berns_internal_void(VALUE tag, VALUE attributes) {
     alen = RSTRING_LEN(attributes);
 
     if (alen > 0) {
-      total = olen + tlen + slen + alen + clen + 1;
+      total = tag_olen + tlen + splen + alen + tag_clen + 1;
     } else {
-      total = olen + tlen + clen + 1;
+      total = tag_olen + tlen + tag_clen + 1;
     }
   } else {
-    total = olen + tlen + clen + 1;
+    total = tag_olen + tlen + tag_clen + 1;
   }
 
   char string[total];
   char *ptr, *end = string + sizeof(string);
 
-  ptr = stecpy(string, open, end);
+  ptr = stecpy(string, tag_open, end);
   ptr = stecpy(ptr, RSTRING_PTR(tag), end);
 
   if (TYPE(attributes) != T_IMEMO && alen > 0) {
@@ -293,7 +290,7 @@ static VALUE berns_internal_void(VALUE tag, VALUE attributes) {
     ptr = stecpy(ptr, RSTRING_PTR(attributes), end);
   }
 
-  stecpy(ptr, close, end);
+  stecpy(ptr, tag_close, end);
 
   return rb_utf8_str_new_cstr(string);
 }
@@ -326,30 +323,20 @@ static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
     content = rb_utf8_str_new_cstr("");
   }
 
-  const char *open = "<";
-  const char *close = ">";
-  const char *slash = "/";
-  const char *space = " ";
-
-  const size_t olen = strlen(open);
-  const size_t clen = strlen(close);
-  const size_t sllen = strlen(slash);
-  const size_t slen = strlen(space);
-
   size_t tlen = RSTRING_LEN(tag);
   size_t conlen = RSTRING_LEN(content);
-  size_t total = olen + tlen + clen + conlen + olen + sllen + tlen + clen + 1;
+  size_t total = tag_olen + tlen + tag_clen + conlen + tag_olen + sllen + tlen + tag_clen + 1;
 
   if (TYPE(attributes) != T_IMEMO) {
     attributes = berns_to_attributes(berns, attributes);
-    total = total + slen + RSTRING_LEN(attributes);
+    total = total + splen + RSTRING_LEN(attributes);
   }
 
   char string[total];
   char *ptr;
   char *end = string + sizeof(string);
 
-  ptr = stecpy(string, open, end);
+  ptr = stecpy(string, tag_open, end);
   ptr = stecpy(ptr, RSTRING_PTR(tag), end);
 
   if (TYPE(attributes) != T_IMEMO) {
@@ -357,12 +344,12 @@ static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
     ptr = stecpy(ptr, RSTRING_PTR(attributes), end);
   }
 
-  ptr = stecpy(ptr, close, end);
+  ptr = stecpy(ptr, tag_close, end);
   ptr = stecpy(ptr, RSTRING_PTR(content), end);
-  ptr = stecpy(ptr, open, end);
+  ptr = stecpy(ptr, tag_open, end);
   ptr = stecpy(ptr, slash, end);
   ptr = stecpy(ptr, RSTRING_PTR(tag), end);
-  stecpy(ptr, close, end);
+  stecpy(ptr, tag_close, end);
 
   return rb_utf8_str_new_cstr(string);
 }
