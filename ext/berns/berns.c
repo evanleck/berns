@@ -1,5 +1,6 @@
 #include "ruby.h"
 #include "extconf.h"
+#include "hescape.h"
 
 static const char *attr_close = "\"";
 static const size_t attr_clen = 1;
@@ -39,22 +40,49 @@ static char *stecpy(char *destination, const char *source, const char *end) {
   return destination;
 }
 
-/*
- * Berns.escape_html is effectively a proxy to CGI.escapeHTML so we limit the
- * type to strings.
- */
 static VALUE berns_escape_html(const VALUE self, VALUE string) {
   StringValue(string);
 
-  const VALUE cgi = rb_const_get(rb_cObject, rb_intern("CGI"));
-  const VALUE escape = rb_intern("escapeHTML");
+  uint8_t *dest = NULL;
+  size_t slen = RSTRING_LEN(string);
+  size_t esclen = hesc_escape_html(&dest, RSTRING_PTR(string), slen);
 
-  return rb_funcall(cgi, escape, 1, string);
+  VALUE rstring;
+
+  if (esclen > slen) {
+    rstring = rb_utf8_str_new_cstr(dest);
+    free(dest);
+  } else {
+    rstring = string;
+  }
+
+  return rstring;
+}
+
+static VALUE berns_internal_to_attribute(const char *attr, const size_t attrlen, const char *value, const size_t vallen) {
+  uint8_t *dest = NULL;
+  size_t esclen = hesc_escape_html(&dest, value, vallen);
+
+  char string[attrlen + attr_eqlen + esclen + attr_clen + 1];
+  char *ptr;
+  char *end = string + sizeof(string);
+
+  ptr = stecpy(string, attr, end);
+  ptr = stecpy(ptr, attr_equals, end);
+  ptr = stecpy(ptr, dest, end);
+  stecpy(ptr, attr_close, end);
+
+  const VALUE rstring = rb_utf8_str_new_cstr(string);
+
+  if (esclen > vallen) {
+    free(dest);
+  }
+
+  return rstring;
 }
 
 static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, const VALUE value) {
   const VALUE keys = rb_funcall(value, rb_intern("keys"), 0);
-  const VALUE values = rb_funcall(value, rb_intern("values"), 0);
   const VALUE length = RARRAY_LEN(keys);
 
   if (length == 0) {
@@ -64,6 +92,7 @@ static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, cons
   VALUE rstring;
   VALUE subattr;
   VALUE subkey;
+  VALUE subvalue;
 
   const size_t alen = RSTRING_LEN(attribute);
 
@@ -72,6 +101,7 @@ static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, cons
 
   for (unsigned int i = 0; i < length; i++) {
     subkey = rb_ary_entry(keys, i);
+    subvalue = rb_hash_aref(value, subkey);
 
     switch(TYPE(subkey)) {
       case T_STRING:
@@ -110,7 +140,22 @@ static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, cons
 
     stecpy(ptr, RSTRING_PTR(subkey), end);
 
-    subattr = berns_to_attribute(self, rb_utf8_str_new_cstr(subname), rb_ary_entry(values, i));
+    switch(TYPE(subvalue)) {
+      case T_STRING:
+        subattr = berns_internal_to_attribute(subname, total, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
+        break;
+      case T_SYMBOL:
+        subvalue = rb_sym_to_s(subvalue);
+        subattr = berns_internal_to_attribute(subname, total, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
+        break;
+      case T_NIL:
+        subattr = rb_utf8_str_new_cstr(subname);
+        break;
+      default:
+        subattr = berns_to_attribute(self, rb_utf8_str_new_cstr(subname), subvalue);
+        break;
+    }
+
     size_t subattrlen = RSTRING_LEN(subattr);
 
     if (i > 0) {
@@ -145,7 +190,7 @@ static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, cons
   return rstring;
 }
 
-static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE value) {
+static VALUE berns_to_attribute(const VALUE self, VALUE attribute, VALUE value) {
   switch(TYPE(attribute)) {
     case T_STRING:
       break;
@@ -157,39 +202,23 @@ static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE v
       break;
   }
 
-  VALUE escaped;
-
   switch(TYPE(value)) {
     case T_NIL:
+      return attribute;
     case T_TRUE:
       return attribute;
     case T_FALSE:
       return rb_utf8_str_new_cstr("");
     case T_HASH:
       return berns_to_subattribute(self, attribute, value);
+    case T_STRING:
+      return berns_internal_to_attribute(RSTRING_PTR(attribute), RSTRING_LEN(attribute), RSTRING_PTR(value), RSTRING_LEN(value));
+    case T_SYMBOL:
+      value = rb_sym_to_s(value);
+      return berns_internal_to_attribute(RSTRING_PTR(attribute), RSTRING_LEN(attribute), RSTRING_PTR(value), RSTRING_LEN(value));
     default:
-      switch (TYPE(value)) {
-        case T_STRING:
-          escaped = berns_escape_html(self, value);
-          break;
-        case T_SYMBOL:
-          escaped = berns_escape_html(self, rb_sym_to_s(value));
-          break;
-        default:
-          escaped = berns_escape_html(self, rb_funcall(value, rb_intern("to_s"), 0));
-          break;
-      }
-
-      char string[RSTRING_LEN(attribute) + attr_eqlen + RSTRING_LEN(escaped) + attr_clen + 1];
-      char *ptr;
-      char *end = string + sizeof(string);
-
-      ptr = stecpy(string, RSTRING_PTR(attribute), end);
-      ptr = stecpy(ptr, attr_equals, end);
-      ptr = stecpy(ptr, RSTRING_PTR(escaped), end);
-      stecpy(ptr, attr_close, end);
-
-      return rb_utf8_str_new_cstr(string);
+      value = rb_funcall(value, rb_intern("to_s"), 0);
+      return berns_internal_to_attribute(RSTRING_PTR(attribute), RSTRING_LEN(attribute), RSTRING_PTR(value), RSTRING_LEN(value));
   }
 }
 

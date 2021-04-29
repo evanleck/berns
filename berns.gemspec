@@ -22,8 +22,6 @@ Gem::Specification.new do |spec|
     'source_code_uri' => 'https://github.com/evanleck/berns'
   }
 
-  spec.add_dependency 'cgi'
-
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'minitest'
   spec.add_development_dependency 'rake'

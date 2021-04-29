@@ -1,6 +1,4 @@
 # frozen_string_literal: true
-require 'cgi/escape'
-
 require 'berns/berns'
 require 'berns/version'
 
