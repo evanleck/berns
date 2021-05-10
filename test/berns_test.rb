@@ -57,6 +57,14 @@ describe Berns do
       assert_equal %(data-something data-something-another="Foo"), Berns.to_attribute(:data, { something: { nil => true, another: 'Foo' } })
     end
 
+    it 'returns the attribute name for true values' do
+      assert_equal 'required', Berns.to_attribute('', { required: true })
+    end
+
+    it 'drops the attribute name for false values' do
+      assert_equal '', Berns.to_attribute('', { required: false })
+    end
+
     it 'returns an empty string for empty attributes' do
       assert_equal '', Berns.to_attribute(:data, {})
       assert_equal '', Berns.to_attribute(:data, { more: {} })

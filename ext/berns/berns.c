@@ -239,6 +239,10 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
     char *combined;
 
     switch(TYPE(subvalue)) {
+      case T_FALSE:
+        combined = calloc(0, 1);
+        break;
+
       case T_TRUE:
         combined = string_value_to_attribute(subattr, subattr_len, "", 0);
         break;

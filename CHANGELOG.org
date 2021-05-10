@@ -1,5 +1,11 @@
 * Berns Changelog
 
+** 3.1.1
+
+Fix an error when hash arguments to =to_attribute= have a =false= value. Prior
+to this release the value would be converted to a string but with this release
+the attribute is dropped altogether, which was the behavior before v3.0.
+
 ** 3.1.0
 
 Version 3.1.0 is a major refactor of the underlying C code introduced with
