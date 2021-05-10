@@ -23,7 +23,57 @@ static const size_t tag_clen = 1;
 static const char *slash = "/";
 static const size_t sllen = 1;
 
-static VALUE berns_to_attribute(const VALUE self, VALUE attribute, const VALUE value);
+
+/*
+ * Macro to capture a block's content as a Ruby string into the local variable
+ * content.
+ */
+#define CONTENT_FROM_BLOCK \
+  VALUE content; \
+  \
+  if (rb_block_given_p()) { \
+    content = rb_yield(Qnil); \
+  \
+    if (TYPE(content) == T_NIL || TYPE(content) == T_FALSE) { \
+      content = rb_utf8_str_new_cstr(""); \
+    } else if (TYPE(content) != T_STRING) { \
+      content = rb_funcall(content, rb_intern("to_s"), 0); \
+    } \
+  } else { \
+    content = rb_utf8_str_new_cstr(""); \
+  }
+
+/*
+ * Macro to define a "dynamic" function that generates a void element.
+ */
+#define VOID_ELEMENT(element_name) \
+  static VALUE external_##element_name##_element(int argc, VALUE* argv, RB_UNUSED_VAR(VALUE self)) { \
+    rb_check_arity(argc, 0, 1); \
+    \
+    char *tag = #element_name; \
+    char *string = void_element(tag, strlen(tag), &argv[0]); \
+    VALUE rstring = rb_utf8_str_new_cstr(string); \
+    free(string); \
+    \
+    return rstring; \
+  }
+
+/*
+ * Macro to define a "dynamic" function that generates a standard element.
+ */
+#define STANDARD_ELEMENT(element_name) \
+  static VALUE external_##element_name##_element(int argc, VALUE* argv, RB_UNUSED_VAR(VALUE self)) { \
+    rb_check_arity(argc, 0, 1); \
+    \
+    CONTENT_FROM_BLOCK; \
+    char *tag = #element_name; \
+    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), &argv[0]); \
+    VALUE rstring = rb_utf8_str_new_cstr(string); \
+    free(string); \
+    \
+    return rstring; \
+  }
+
 
 /*
  * "Safe strcpy" - https://twitter.com/hyc_symas/status/1102573036534972416?s=12
@@ -40,7 +90,13 @@ static char *stecpy(char *destination, const char *source, const char *end) {
   return destination;
 }
 
-static VALUE berns_escape_html(const VALUE self, VALUE string) {
+/*
+ * The external API for Berns.escape_html.
+ *
+ *   string should be a string, anything else will raise an error.
+ *
+ */
+static VALUE external_escape_html(const VALUE self, VALUE string) {
   StringValue(string);
 
   uint8_t *dest = NULL;
@@ -59,49 +115,86 @@ static VALUE berns_escape_html(const VALUE self, VALUE string) {
   return rstring;
 }
 
-static VALUE berns_internal_to_attribute(const char *attr, const size_t attrlen, const char *value, const size_t vallen) {
-  uint8_t *dest = NULL;
-  size_t esclen = hesc_escape_html(&dest, value, vallen);
+/*
+ * Return a freeable piece of memory with a copy of the attribute passed in it.
+ * Why does this exist? So we can free the memory created by this without having
+ * branch further in other places.
+ */
+static char * empty_value_to_attribute(const char *attr, const size_t attrlen) {
+  size_t total_size = attrlen + 1;
+  char *dest = malloc(total_size);
+  char *ptr = NULL;
+  char *end = dest + total_size;
 
-  char string[attrlen + attr_eqlen + esclen + attr_clen + 1];
-  char *ptr;
-  char *end = string + sizeof(string);
+  stecpy(dest, attr, end);
 
-  ptr = stecpy(string, attr, end);
-  ptr = stecpy(ptr, attr_equals, end);
-  ptr = stecpy(ptr, dest, end);
-  stecpy(ptr, attr_close, end);
-
-  const VALUE rstring = rb_utf8_str_new_cstr(string);
-
-  if (esclen > vallen) {
-    free(dest);
-  }
-
-  return rstring;
+  return dest;
 }
 
-static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, const VALUE value) {
-  const VALUE keys = rb_funcall(value, rb_intern("keys"), 0);
-  const VALUE length = RARRAY_LEN(keys);
+/*
+ * Takes a string attribute name and value pair and converts them into a string ready to use in HTML
+ *
+ *   "class" + "bg-primary" => 'class="bg-primary"'
+*/
+static char * string_value_to_attribute(const char *attr, const size_t attrlen, const char *value, const size_t vallen) {
+  if (vallen == 0) {
+    size_t total_size = attrlen + 1;
+    char *dest = malloc(total_size);
+    char *ptr = NULL;
+    char *end = dest + total_size;
 
-  if (length == 0) {
-    return rb_utf8_str_new_cstr("");
+    stecpy(dest, attr, end);
+
+    return dest;
+  } else {
+    uint8_t *edest = NULL;
+    size_t esclen = hesc_escape_html(&edest, value, vallen);
+
+    size_t total_size = attrlen + attr_eqlen + esclen + attr_clen + 1;
+    char *dest = malloc(total_size);
+    char *ptr = NULL;
+    char *end = dest + total_size;
+
+    ptr = stecpy(dest, attr, end);
+    ptr = stecpy(ptr, attr_equals, end);
+    ptr = stecpy(ptr, edest, end);
+    ptr = stecpy(ptr, attr_close, end);
+
+    if (esclen > vallen) {
+      free(edest);
+    }
+
+    return dest;
+  }
+}
+
+static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *value) {
+  if (TYPE(*value) == T_IMEMO) {
+    return calloc(0, 1);
   }
 
-  VALUE rstring;
-  VALUE subattr;
+  Check_Type(*value, T_HASH);
+
+  if (rb_hash_size(*value) == 1 ) {
+    return calloc(0, 1);
+  }
+
   VALUE subkey;
   VALUE subvalue;
 
-  const size_t alen = RSTRING_LEN(attribute);
+  const VALUE keys = rb_funcall(*value, rb_intern("keys"), 0);
+  const VALUE length = RARRAY_LEN(keys);
 
-  char *substring = NULL;
-  size_t size = 0;
+  size_t allocated = 256;
+  size_t occupied = 0;
+
+  char *destination = malloc(allocated);
+  char *position = destination;
+  char *end = destination + allocated;
 
   for (unsigned int i = 0; i < length; i++) {
     subkey = rb_ary_entry(keys, i);
-    subvalue = rb_hash_aref(value, subkey);
+    subvalue = rb_hash_aref(*value, subkey);
 
     switch(TYPE(subkey)) {
       case T_STRING:
@@ -110,842 +203,454 @@ static VALUE berns_to_subattribute(const VALUE self, const VALUE attribute, cons
         subkey = rb_utf8_str_new_cstr("");
         break;
       case T_SYMBOL:
-        subkey = rb_sym_to_s(subkey);
+        subkey = rb_sym2str(subkey);
         break;
       default:
-        if (substring != NULL) {
-          free(substring);
-        }
-
-        rb_raise(rb_eTypeError, "Berns.to_attribute value keys must be Strings or Symbols.");
+        free(destination);
+        rb_raise(rb_eTypeError, "Berns.to_attribute value keys must be Strings, Symbols, or nil.");
         break;
     }
 
-    size_t total = alen + 1;
-    size_t sklen = RSTRING_LEN(subkey);
+    size_t subattr_len = attrlen + 1;
+    size_t subkey_len = RSTRING_LEN(subkey);
 
-    if (sklen > 0) {
-      total += dlen + sklen + 1;
+    if (attrlen > 0 && subkey_len > 0) {
+      subattr_len += dlen;
     }
 
-    char subname[total];
-    char *ptr;
-    char *end = subname + sizeof(subname);
+    if (subkey_len > 0) {
+      subattr_len += subkey_len;
+    }
 
-    ptr = stecpy(subname, RSTRING_PTR(attribute), end);
+    char subattr[subattr_len];
+    char *ptr = subattr;
+    char *end = subattr + sizeof(subattr);
 
-    if (sklen > 0) {
+    if (attrlen > 0) {
+      ptr = stecpy(ptr, attr, end);
+    }
+
+    if (attrlen > 0 && subkey_len > 0) {
       ptr = stecpy(ptr, dash, end);
     }
 
     stecpy(ptr, RSTRING_PTR(subkey), end);
 
+    char *combined;
+
     switch(TYPE(subvalue)) {
+      case T_TRUE:
+        combined = string_value_to_attribute(subattr, subattr_len, "", 0);
+        break;
+
       case T_STRING:
-        subattr = berns_internal_to_attribute(subname, total, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
+        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
+
       case T_SYMBOL:
-        subvalue = rb_sym_to_s(subvalue);
-        subattr = berns_internal_to_attribute(subname, total, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
+        subvalue = rb_sym2str(subvalue);
+        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
+
       case T_NIL:
-        subattr = rb_utf8_str_new_cstr(subname);
+        subvalue = rb_utf8_str_new_cstr("");
+        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
+
+      case T_HASH:
+        combined = hash_value_to_attribute(subattr, subattr_len, &subvalue);
+        break;
+
       default:
-        subattr = berns_to_attribute(self, rb_utf8_str_new_cstr(subname), subvalue);
+        subvalue = rb_funcall(subvalue, rb_intern("to_s"), 0);
+        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
     }
 
-    size_t subattrlen = RSTRING_LEN(subattr);
+    size_t combined_len = strlen(combined);
+    size_t size_to_append = combined_len;
 
     if (i > 0) {
-      size = size + splen + subattrlen;
-      char *tmp = realloc(substring, size + 1);
-
-      if (tmp == NULL) {
-        rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
-      }
-
-      substring = tmp;
-
-      stecpy(substring + size - splen - subattrlen, space, substring + size);
-      stecpy(substring + size - subattrlen, RSTRING_PTR(subattr), substring + size + 1);
-    } else {
-      size = size + subattrlen;
-      char *tmp = realloc(substring, size + 1);
-
-      if (tmp == NULL) {
-        rb_raise(rb_eNoMemError, "Berns.to_attribute could not allocate sufficient memory.");
-      }
-
-      substring = tmp;
-
-      stecpy(substring + size - subattrlen, RSTRING_PTR(subattr), substring + size + 1);
+      size_to_append += splen;
     }
+
+    if ((size_to_append + occupied) > allocated) {
+      /* To avoid an abundance of reallocations, this is a multiple of 256. */
+      double multiple = (double) (size_to_append + occupied) / 256;
+      size_t new_size_to_allocate = (unsigned int) ceil(multiple) * 256;
+
+      char *tmp = realloc(destination, new_size_to_allocate);
+
+      if (tmp == NULL) {
+        free(destination);
+        rb_raise(rb_eNoMemError, "Berns could not allocate sufficient memory.");
+      }
+
+      allocated = new_size_to_allocate;
+      destination = tmp;
+      position = destination + occupied;
+      end = destination + allocated;
+    }
+
+    if (i > 0) {
+      position = stecpy(position, space, end);
+      occupied += splen;
+    }
+
+    position = stecpy(position, combined, end);
+    occupied += combined_len;
+
+    free(combined);
   }
 
-  rstring = rb_utf8_str_new_cstr(substring);
-  free(substring);
+  return destination;
+}
+
+/*
+ * Convert an attribute name and value into a string.
+ */
+static char * to_attribute(VALUE attr, VALUE *value) {
+  switch(TYPE(attr)) {
+    case T_SYMBOL:
+      attr = rb_sym2str(attr);
+      break;
+    default:
+      break;
+  }
+
+  StringValue(attr);
+
+  char *val = NULL;
+  VALUE str;
+
+  switch(TYPE(*value)) {
+    case T_NIL:
+    case T_TRUE:
+      val = empty_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr));
+      break;
+    case T_FALSE:
+      val = calloc(0, 1);
+      break;
+    case T_HASH:
+      val = hash_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), value);
+      break;
+    case T_STRING:
+      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(*value), RSTRING_LEN(*value));
+      break;
+    case T_SYMBOL:
+      str = rb_sym2str(*value);
+      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(str), RSTRING_LEN(str));
+      break;
+    default:
+      str = rb_funcall(*value, rb_intern("to_s"), 0);
+      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(str), RSTRING_LEN(str));
+      break;
+  }
+
+  return val;
+}
+
+/*
+ * The external API for Berns.to_attribute.
+ *
+ *   attr should be either a symbol or string, otherwise an error is raised.
+ *   value can be anything to responds to #to_s
+ *
+ */
+static VALUE external_to_attribute(RB_UNUSED_VAR(VALUE self), VALUE attr, VALUE value) {
+  switch(TYPE(attr)) {
+    case T_SYMBOL:
+      attr = rb_sym2str(attr);
+      break;
+    default:
+      break;
+  }
+
+  StringValue(attr);
+
+  char *val = to_attribute(attr, &value);
+  VALUE rstring = rb_utf8_str_new_cstr(val);
+  free(val);
 
   return rstring;
 }
 
-static VALUE berns_to_attribute(const VALUE self, VALUE attribute, VALUE value) {
-  switch(TYPE(attribute)) {
-    case T_STRING:
-      break;
-    case T_SYMBOL:
-      attribute = rb_sym_to_s(attribute);
-      break;
-    default:
-      rb_raise(rb_eTypeError, "Berns.to_attribute attributes must be Strings or Symbols.");
-      break;
-  }
-
-  switch(TYPE(value)) {
-    case T_NIL:
-      return attribute;
-    case T_TRUE:
-      return attribute;
-    case T_FALSE:
-      return rb_utf8_str_new_cstr("");
-    case T_HASH:
-      return berns_to_subattribute(self, attribute, value);
-    case T_STRING:
-      return berns_internal_to_attribute(RSTRING_PTR(attribute), RSTRING_LEN(attribute), RSTRING_PTR(value), RSTRING_LEN(value));
-    case T_SYMBOL:
-      value = rb_sym_to_s(value);
-      return berns_internal_to_attribute(RSTRING_PTR(attribute), RSTRING_LEN(attribute), RSTRING_PTR(value), RSTRING_LEN(value));
-    default:
-      value = rb_funcall(value, rb_intern("to_s"), 0);
-      return berns_internal_to_attribute(RSTRING_PTR(attribute), RSTRING_LEN(attribute), RSTRING_PTR(value), RSTRING_LEN(value));
-  }
-}
-
-/* Expects a Ruby Hash as a single argument. */
-static VALUE berns_to_attributes(const VALUE self, const VALUE attributes) {
+/*
+ * The external API for Berns.to_attributes.
+ *
+ *   attributes should be a hash, otherwise an error is raised.
+ *
+ */
+static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes) {
   Check_Type(attributes, T_HASH);
 
-  VALUE key;
-  VALUE attribute;
-  VALUE rstring;
-
-  const VALUE keys = rb_funcall(attributes, rb_intern("keys"), 0);
-  const VALUE length = RARRAY_LEN(keys);
-
-  if (length == 0) {
+  if (rb_hash_size(attributes) == 1) {
     return rb_utf8_str_new_cstr("");
   }
 
-  char *string = NULL;
-  size_t size = 0; /* IN BYTES */
+  char *empty = "";
+  char *attrs = hash_value_to_attribute(empty, 0, &attributes);
 
-  for (unsigned int i = 0; i < length; i++) {
-    key = rb_ary_entry(keys, i);
-    attribute = berns_to_attribute(self, key, rb_hash_aref(attributes, key));
-    size_t alen = RSTRING_LEN(attribute);
+  VALUE rstring = rb_utf8_str_new_cstr(attrs);
+  free(attrs);
 
-    if (i > 0) {
-      char *tmp = realloc(string, size + alen + splen + 1);
+  return rstring;
+}
 
-      if (tmp == NULL) {
-        rb_raise(rb_eNoMemError, "Berns.to_attributes could not allocate sufficient memory.");
-      }
+static char * void_element(char *tag, size_t tlen, VALUE *attributes) {
+  /* T_IMEMO is what we get if an optional argument was not passed. */
+  if (TYPE(*attributes) == T_IMEMO) {
+    size_t total = tag_olen + tlen + tag_clen + 1;
+    char *string = malloc(total);
+    char *ptr;
+    char *end = string + total;
 
-      string = tmp;
+    ptr = stecpy(string, tag_open, end);
+    ptr = stecpy(ptr, tag, end);
+    ptr = stecpy(ptr, tag_close, end);
 
-      stecpy(string + size, space, string + size + splen);
-      stecpy(string + size + splen, RSTRING_PTR(attribute), string + size + splen + alen + 1);
-      size = size + splen + alen;
-    } else {
-      char *tmp = realloc(string, size + alen + 1);
+    return string;
+  } else {
+    char *empty = "";
+    char *attrs = hash_value_to_attribute(empty, 0, attributes);
 
-      if (tmp == NULL) {
-        rb_raise(rb_eNoMemError, "Berns.to_attributes could not allocate sufficient memory.");
-      }
+    size_t total = tag_olen + tlen + splen + strlen(attrs) + tag_clen + 1;
+    char *string = malloc(total);
+    char *ptr;
+    char *end = string + total;
 
-      string = tmp;
+    ptr = stecpy(string, tag_open, end);
+    ptr = stecpy(ptr, tag, end);
+    ptr = stecpy(ptr, space, end);
+    ptr = stecpy(ptr, attrs, end);
+    ptr = stecpy(ptr, tag_close, end);
 
-      stecpy(string + size, RSTRING_PTR(attribute), string + size + alen + 1);
-      size = size + alen;
-    }
+    free(attrs);
+
+    return string;
+  }
+}
+
+/*
+ * The external API for Berns.void.
+ *
+ *   The first argument should be a string or symbol, otherwise an error is raised.
+ *   The second argument must be a hash if present.
+ *
+ */
+static VALUE external_void_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VALUE self)) {
+  rb_check_arity(argc, 1, 2);
+
+  VALUE tag = arguments[0];
+  VALUE attributes = arguments[1];
+
+  if (TYPE(tag) == T_SYMBOL) {
+    tag = rb_sym2str(tag);
   }
 
-  rstring = rb_utf8_str_new_cstr(string);
+  StringValue(tag);
+
+  char *string = void_element(RSTRING_PTR(tag), RSTRING_LEN(tag), &attributes);
+  VALUE rstring = rb_utf8_str_new_cstr(string);
+
   free(string);
 
   return rstring;
 }
 
-static VALUE berns_internal_void(VALUE tag, VALUE attributes) {
-  const VALUE berns = rb_const_get(rb_cObject, rb_intern("Berns"));
+static char * element(char *tag, size_t tlen, char *content, size_t conlen, VALUE *attributes) {
+  char *empty = "";
+  char *attrs = hash_value_to_attribute(empty, 0, attributes);
+  size_t alen = strlen(attrs);
 
-  switch(TYPE(tag)) {
-    case T_STRING:
-      break;
-    case T_SYMBOL:
-      tag = rb_sym_to_s(tag);
-      break;
-    default:
-      rb_raise(rb_eTypeError, "Berns.void elements must be a String or Symbol.");
-      break;
+  size_t total = tag_olen + tlen + tag_clen + tag_olen + sllen + tlen + tag_clen + 1;
+
+  /* If we have some attributes, add a space and the attributes' length. */
+  if (alen > 0) {
+    total += splen + alen;
   }
 
-  size_t tlen = RSTRING_LEN(tag);
-  size_t total;
-  size_t alen = 0;
-
-  if (TYPE(attributes) != T_IMEMO) {
-    attributes = berns_to_attributes(berns, attributes);
-    alen = RSTRING_LEN(attributes);
-
-    if (alen > 0) {
-      total = tag_olen + tlen + splen + alen + tag_clen + 1;
-    } else {
-      total = tag_olen + tlen + tag_clen + 1;
-    }
-  } else {
-    total = tag_olen + tlen + tag_clen + 1;
+  /* If we have some content, add the content length to our total. */
+  if (conlen > 0) {
+    total += conlen;
   }
 
-  char string[total];
-  char *ptr, *end = string + sizeof(string);
+  char *dest = malloc(total);
+  char *ptr = NULL;
+  char *end = dest + total;
 
-  ptr = stecpy(string, tag_open, end);
-  ptr = stecpy(ptr, RSTRING_PTR(tag), end);
+  ptr = stecpy(dest, tag_open, end);
+  ptr = stecpy(ptr, tag, end);
 
-  if (TYPE(attributes) != T_IMEMO && alen > 0) {
+  if (alen > 0) {
     ptr = stecpy(ptr, space, end);
-    ptr = stecpy(ptr, RSTRING_PTR(attributes), end);
-  }
-
-  stecpy(ptr, tag_close, end);
-
-  return rb_utf8_str_new_cstr(string);
-}
-
-static VALUE berns_internal_element(VALUE tag, VALUE attributes) {
-  const VALUE berns = rb_const_get(rb_cObject, rb_intern("Berns"));
-
-  VALUE content;
-
-  switch(TYPE(tag)) {
-    case T_STRING:
-      break;
-    case T_SYMBOL:
-      tag = rb_sym_to_s(tag);
-      break;
-    default:
-      rb_raise(rb_eTypeError, "Berns.element elements must be a String or Symbol.");
-      break;
-  }
-
-  if (rb_block_given_p()) {
-    content = rb_yield(Qnil);
-
-    if (TYPE(content) == T_NIL || TYPE(content) == T_FALSE) {
-      content = rb_utf8_str_new_cstr("");
-    } else if (TYPE(content) != T_STRING) {
-      content = rb_funcall(content, rb_intern("to_s"), 0);
-    }
-  } else {
-    content = rb_utf8_str_new_cstr("");
-  }
-
-  size_t tlen = RSTRING_LEN(tag);
-  size_t conlen = RSTRING_LEN(content);
-  size_t total = tag_olen + tlen + tag_clen + conlen + tag_olen + sllen + tlen + tag_clen + 1;
-
-  if (TYPE(attributes) != T_IMEMO) {
-    attributes = berns_to_attributes(berns, attributes);
-    total = total + splen + RSTRING_LEN(attributes);
-  }
-
-  char string[total];
-  char *ptr;
-  char *end = string + sizeof(string);
-
-  ptr = stecpy(string, tag_open, end);
-  ptr = stecpy(ptr, RSTRING_PTR(tag), end);
-
-  if (TYPE(attributes) != T_IMEMO) {
-    ptr = stecpy(ptr, space, end);
-    ptr = stecpy(ptr, RSTRING_PTR(attributes), end);
+    ptr = stecpy(ptr, attrs, end);
   }
 
   ptr = stecpy(ptr, tag_close, end);
-  ptr = stecpy(ptr, RSTRING_PTR(content), end);
+
+  if (conlen > 0) {
+    ptr = stecpy(ptr, content, end);
+  }
+
   ptr = stecpy(ptr, tag_open, end);
   ptr = stecpy(ptr, slash, end);
-  ptr = stecpy(ptr, RSTRING_PTR(tag), end);
-  stecpy(ptr, tag_close, end);
+  ptr = stecpy(ptr, tag, end);
+  ptr = stecpy(ptr, tag_close, end);
 
-  return rb_utf8_str_new_cstr(string);
+  free(attrs);
+
+  return dest;
 }
 
-static VALUE berns_void_element(int argc, VALUE *argv, VALUE self) {
+/*
+ * The external API for Berns.element.
+ *
+ *   The first argument should be a string or symbol, otherwise an error is raised.
+ *   The second argument must be a hash if present.
+ *   An optional block can be given which will used as the contents of the element.
+ *
+ */
+static VALUE external_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VALUE self)) {
   rb_check_arity(argc, 1, 2);
-  return berns_internal_void(argv[0], argv[1]);
-}
-
-static VALUE berns_area_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("area"), argv[0]);
-}
-
-static VALUE berns_base_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("base"), argv[0]);
-}
-
-static VALUE berns_br_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("br"), argv[0]);
-}
-
-static VALUE berns_col_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("col"), argv[0]);
-}
-
-static VALUE berns_embed_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("embed"), argv[0]);
-}
-
-static VALUE berns_hr_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("hr"), argv[0]);
-}
-
-static VALUE berns_img_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("img"), argv[0]);
-}
-
-static VALUE berns_input_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("input"), argv[0]);
-}
-
-static VALUE berns_link_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("link"), argv[0]);
-}
-
-static VALUE berns_menuitem_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("menuitem"), argv[0]);
-}
-
-static VALUE berns_meta_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("meta"), argv[0]);
-}
-
-static VALUE berns_param_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("param"), argv[0]);
-}
-
-static VALUE berns_source_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("source"), argv[0]);
-}
-
-static VALUE berns_track_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("track"), argv[0]);
-}
-
-static VALUE berns_wbr_element(int argc, VALUE *argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_void(rb_utf8_str_new_cstr("wbr"), argv[0]);
-}
-
-static VALUE berns_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 1, 2);
-  return berns_internal_element(argv[0], argv[1]);
-}
-
-static VALUE berns_a_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("a"), argv[0]);
-}
-
-static VALUE berns_abbr_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("abbr"), argv[0]);
-}
-
-static VALUE berns_address_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("address"), argv[0]);
-}
-
-static VALUE berns_article_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("article"), argv[0]);
-}
-
-static VALUE berns_aside_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("aside"), argv[0]);
-}
-
-static VALUE berns_audio_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("audio"), argv[0]);
-}
-
-static VALUE berns_b_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("b"), argv[0]);
-}
-
-static VALUE berns_bdi_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("bdi"), argv[0]);
-}
-
-static VALUE berns_bdo_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("bdo"), argv[0]);
-}
-
-static VALUE berns_blockquote_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("blockquote"), argv[0]);
-}
-
-static VALUE berns_body_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("body"), argv[0]);
-}
-
-static VALUE berns_button_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("button"), argv[0]);
-}
-
-static VALUE berns_canvas_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("canvas"), argv[0]);
-}
-
-static VALUE berns_caption_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("caption"), argv[0]);
-}
-
-static VALUE berns_cite_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("cite"), argv[0]);
-}
-
-static VALUE berns_code_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("code"), argv[0]);
-}
-
-static VALUE berns_colgroup_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("colgroup"), argv[0]);
-}
-
-static VALUE berns_datalist_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("datalist"), argv[0]);
-}
-
-static VALUE berns_dd_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("dd"), argv[0]);
-}
-
-static VALUE berns_del_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("del"), argv[0]);
-}
-
-static VALUE berns_details_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("details"), argv[0]);
-}
-
-static VALUE berns_dfn_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("dfn"), argv[0]);
-}
-
-static VALUE berns_dialog_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("dialog"), argv[0]);
-}
-
-static VALUE berns_div_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("div"), argv[0]);
-}
-
-static VALUE berns_dl_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("dl"), argv[0]);
-}
-
-static VALUE berns_dt_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("dt"), argv[0]);
-}
-
-static VALUE berns_em_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("em"), argv[0]);
-}
-
-static VALUE berns_fieldset_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("fieldset"), argv[0]);
-}
-
-static VALUE berns_figcaption_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("figcaption"), argv[0]);
-}
-
-static VALUE berns_figure_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("figure"), argv[0]);
-}
-
-static VALUE berns_footer_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("footer"), argv[0]);
-}
-
-static VALUE berns_form_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("form"), argv[0]);
-}
-
-static VALUE berns_h1_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("h1"), argv[0]);
-}
-
-static VALUE berns_h2_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("h2"), argv[0]);
-}
-
-static VALUE berns_h3_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("h3"), argv[0]);
-}
-
-static VALUE berns_h4_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("h4"), argv[0]);
-}
-
-static VALUE berns_h5_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("h5"), argv[0]);
-}
-
-static VALUE berns_h6_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("h6"), argv[0]);
-}
-
-static VALUE berns_head_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("head"), argv[0]);
-}
-
-static VALUE berns_header_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("header"), argv[0]);
-}
-
-static VALUE berns_html_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("html"), argv[0]);
-}
-
-static VALUE berns_i_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("i"), argv[0]);
-}
-
-static VALUE berns_iframe_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("iframe"), argv[0]);
-}
-
-static VALUE berns_ins_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("ins"), argv[0]);
-}
-
-static VALUE berns_kbd_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("kbd"), argv[0]);
-}
-
-static VALUE berns_label_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("label"), argv[0]);
-}
-
-static VALUE berns_legend_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("legend"), argv[0]);
-}
-
-static VALUE berns_li_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("li"), argv[0]);
-}
-
-static VALUE berns_main_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("main"), argv[0]);
-}
-
-static VALUE berns_map_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("map"), argv[0]);
-}
-
-static VALUE berns_mark_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("mark"), argv[0]);
-}
-
-static VALUE berns_menu_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("menu"), argv[0]);
-}
-
-static VALUE berns_meter_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("meter"), argv[0]);
-}
-
-static VALUE berns_nav_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("nav"), argv[0]);
-}
-
-static VALUE berns_noscript_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("noscript"), argv[0]);
-}
-
-static VALUE berns_object_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("object"), argv[0]);
-}
-
-static VALUE berns_ol_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("ol"), argv[0]);
-}
-
-static VALUE berns_optgroup_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("optgroup"), argv[0]);
-}
-
-static VALUE berns_option_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("option"), argv[0]);
-}
-
-static VALUE berns_output_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("output"), argv[0]);
-}
-
-static VALUE berns_p_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("p"), argv[0]);
-}
-
-static VALUE berns_picture_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("picture"), argv[0]);
-}
-
-static VALUE berns_pre_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("pre"), argv[0]);
-}
-
-static VALUE berns_progress_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("progress"), argv[0]);
-}
-
-static VALUE berns_q_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("q"), argv[0]);
-}
-
-static VALUE berns_rp_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("rp"), argv[0]);
-}
 
-static VALUE berns_rt_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("rt"), argv[0]);
-}
-
-static VALUE berns_ruby_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("ruby"), argv[0]);
-}
-
-static VALUE berns_s_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("s"), argv[0]);
-}
-
-static VALUE berns_samp_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("samp"), argv[0]);
-}
-
-static VALUE berns_script_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("script"), argv[0]);
-}
-
-static VALUE berns_section_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("section"), argv[0]);
-}
-
-static VALUE berns_select_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("select"), argv[0]);
-}
-
-static VALUE berns_small_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("small"), argv[0]);
-}
-
-static VALUE berns_span_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("span"), argv[0]);
-}
-
-static VALUE berns_strong_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("strong"), argv[0]);
-}
-
-static VALUE berns_style_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("style"), argv[0]);
-}
-
-static VALUE berns_sub_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("sub"), argv[0]);
-}
-
-static VALUE berns_summary_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("summary"), argv[0]);
-}
-
-static VALUE berns_table_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("table"), argv[0]);
-}
-
-static VALUE berns_tbody_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("tbody"), argv[0]);
-}
-
-static VALUE berns_td_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("td"), argv[0]);
-}
-
-static VALUE berns_template_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("template"), argv[0]);
-}
-
-static VALUE berns_textarea_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("textarea"), argv[0]);
-}
-
-static VALUE berns_tfoot_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("tfoot"), argv[0]);
-}
-
-static VALUE berns_th_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("th"), argv[0]);
-}
-
-static VALUE berns_thead_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("thead"), argv[0]);
-}
-
-static VALUE berns_time_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("time"), argv[0]);
-}
-
-static VALUE berns_title_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("title"), argv[0]);
-}
-
-static VALUE berns_tr_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("tr"), argv[0]);
-}
-
-static VALUE berns_u_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("u"), argv[0]);
-}
-
-static VALUE berns_ul_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("ul"), argv[0]);
-}
-
-static VALUE berns_var_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("var"), argv[0]);
-}
-
-static VALUE berns_video_element(int argc, VALUE* argv, VALUE self) {
-  rb_check_arity(argc, 0, 1);
-  return berns_internal_element(rb_utf8_str_new_cstr("video"), argv[0]);
-}
+  VALUE tag = arguments[0];
+  VALUE attributes = arguments[1];
+
+  if (TYPE(tag) == T_SYMBOL) {
+    tag = rb_sym2str(tag);
+  }
+
+  StringValue(tag);
+
+  CONTENT_FROM_BLOCK;
+
+  char *string = element(RSTRING_PTR(tag), RSTRING_LEN(tag), RSTRING_PTR(content), RSTRING_LEN(content), &attributes);
+  VALUE rstring = rb_utf8_str_new_cstr(string);
+  free(string);
+
+  return rstring;
+}
+
+VOID_ELEMENT(area);
+VOID_ELEMENT(base);
+VOID_ELEMENT(br);
+VOID_ELEMENT(col);
+VOID_ELEMENT(embed);
+VOID_ELEMENT(hr);
+VOID_ELEMENT(img);
+VOID_ELEMENT(input);
+VOID_ELEMENT(link);
+VOID_ELEMENT(menuitem);
+VOID_ELEMENT(meta);
+VOID_ELEMENT(param);
+VOID_ELEMENT(source);
+VOID_ELEMENT(track);
+VOID_ELEMENT(wbr);
+
+STANDARD_ELEMENT(a);
+STANDARD_ELEMENT(abbr);
+STANDARD_ELEMENT(address);
+STANDARD_ELEMENT(article);
+STANDARD_ELEMENT(aside);
+STANDARD_ELEMENT(audio);
+STANDARD_ELEMENT(b);
+STANDARD_ELEMENT(bdi);
+STANDARD_ELEMENT(bdo);
+STANDARD_ELEMENT(blockquote);
+STANDARD_ELEMENT(body);
+STANDARD_ELEMENT(button);
+STANDARD_ELEMENT(canvas);
+STANDARD_ELEMENT(caption);
+STANDARD_ELEMENT(cite);
+STANDARD_ELEMENT(code);
+STANDARD_ELEMENT(colgroup);
+STANDARD_ELEMENT(datalist);
+STANDARD_ELEMENT(dd);
+STANDARD_ELEMENT(del);
+STANDARD_ELEMENT(details);
+STANDARD_ELEMENT(dfn);
+STANDARD_ELEMENT(dialog);
+STANDARD_ELEMENT(div);
+STANDARD_ELEMENT(dl);
+STANDARD_ELEMENT(dt);
+STANDARD_ELEMENT(em);
+STANDARD_ELEMENT(fieldset);
+STANDARD_ELEMENT(figcaption);
+STANDARD_ELEMENT(figure);
+STANDARD_ELEMENT(footer);
+STANDARD_ELEMENT(form);
+STANDARD_ELEMENT(h1);
+STANDARD_ELEMENT(h2);
+STANDARD_ELEMENT(h3);
+STANDARD_ELEMENT(h4);
+STANDARD_ELEMENT(h5);
+STANDARD_ELEMENT(h6);
+STANDARD_ELEMENT(head);
+STANDARD_ELEMENT(header);
+STANDARD_ELEMENT(html);
+STANDARD_ELEMENT(i);
+STANDARD_ELEMENT(iframe);
+STANDARD_ELEMENT(ins);
+STANDARD_ELEMENT(kbd);
+STANDARD_ELEMENT(label);
+STANDARD_ELEMENT(legend);
+STANDARD_ELEMENT(li);
+STANDARD_ELEMENT(main);
+STANDARD_ELEMENT(map);
+STANDARD_ELEMENT(mark);
+STANDARD_ELEMENT(menu);
+STANDARD_ELEMENT(meter);
+STANDARD_ELEMENT(nav);
+STANDARD_ELEMENT(noscript);
+STANDARD_ELEMENT(object);
+STANDARD_ELEMENT(ol);
+STANDARD_ELEMENT(optgroup);
+STANDARD_ELEMENT(option);
+STANDARD_ELEMENT(output);
+STANDARD_ELEMENT(p);
+STANDARD_ELEMENT(picture);
+STANDARD_ELEMENT(pre);
+STANDARD_ELEMENT(progress);
+STANDARD_ELEMENT(q);
+STANDARD_ELEMENT(rp);
+STANDARD_ELEMENT(rt);
+STANDARD_ELEMENT(ruby);
+STANDARD_ELEMENT(s);
+STANDARD_ELEMENT(samp);
+STANDARD_ELEMENT(script);
+STANDARD_ELEMENT(section);
+STANDARD_ELEMENT(select);
+STANDARD_ELEMENT(small);
+STANDARD_ELEMENT(span);
+STANDARD_ELEMENT(strong);
+STANDARD_ELEMENT(style);
+STANDARD_ELEMENT(sub);
+STANDARD_ELEMENT(summary);
+STANDARD_ELEMENT(table);
+STANDARD_ELEMENT(tbody);
+STANDARD_ELEMENT(td);
+STANDARD_ELEMENT(template);
+STANDARD_ELEMENT(textarea);
+STANDARD_ELEMENT(tfoot);
+STANDARD_ELEMENT(th);
+STANDARD_ELEMENT(thead);
+STANDARD_ELEMENT(time);
+STANDARD_ELEMENT(title);
+STANDARD_ELEMENT(tr);
+STANDARD_ELEMENT(u);
+STANDARD_ELEMENT(ul);
+STANDARD_ELEMENT(var);
+STANDARD_ELEMENT(video);
 
 void Init_berns() {
   VALUE Berns = rb_define_module("Berns");
 
-  rb_define_singleton_method(Berns, "element", berns_element, -1);
-  rb_define_singleton_method(Berns, "escape_html", berns_escape_html, 1);
-  rb_define_singleton_method(Berns, "to_attribute", berns_to_attribute, 2);
-  rb_define_singleton_method(Berns, "to_attributes", berns_to_attributes, 1);
-  rb_define_singleton_method(Berns, "void", berns_void_element, -1);
+  rb_define_singleton_method(Berns, "element", external_element, -1);
+  rb_define_singleton_method(Berns, "escape_html", external_escape_html, 1);
+  rb_define_singleton_method(Berns, "to_attribute", external_to_attribute, 2);
+  rb_define_singleton_method(Berns, "to_attributes", external_to_attributes, 1);
+  rb_define_singleton_method(Berns, "void", external_void_element, -1);
 
   /*
    * List of void elements - http://xahlee.info/js/html5_non-closing_tag.html
@@ -953,21 +658,21 @@ void Init_berns() {
    *   area base br col embed hr img input link menuitem meta param source track wbr
    *
    */
-  rb_define_singleton_method(Berns, "area", berns_area_element, -1);
-  rb_define_singleton_method(Berns, "base", berns_base_element, -1);
-  rb_define_singleton_method(Berns, "br", berns_br_element, -1);
-  rb_define_singleton_method(Berns, "col", berns_col_element, -1);
-  rb_define_singleton_method(Berns, "embed", berns_embed_element, -1);
-  rb_define_singleton_method(Berns, "hr", berns_hr_element, -1);
-  rb_define_singleton_method(Berns, "img", berns_img_element, -1);
-  rb_define_singleton_method(Berns, "input", berns_input_element, -1);
-  rb_define_singleton_method(Berns, "link", berns_link_element, -1);
-  rb_define_singleton_method(Berns, "menuitem", berns_menuitem_element, -1);
-  rb_define_singleton_method(Berns, "meta", berns_meta_element, -1);
-  rb_define_singleton_method(Berns, "param", berns_param_element, -1);
-  rb_define_singleton_method(Berns, "source", berns_source_element, -1);
-  rb_define_singleton_method(Berns, "track", berns_track_element, -1);
-  rb_define_singleton_method(Berns, "wbr", berns_wbr_element, -1);
+  rb_define_singleton_method(Berns, "area", external_area_element, -1);
+  rb_define_singleton_method(Berns, "base", external_base_element, -1);
+  rb_define_singleton_method(Berns, "br", external_br_element, -1);
+  rb_define_singleton_method(Berns, "col", external_col_element, -1);
+  rb_define_singleton_method(Berns, "embed", external_embed_element, -1);
+  rb_define_singleton_method(Berns, "hr", external_hr_element, -1);
+  rb_define_singleton_method(Berns, "img", external_img_element, -1);
+  rb_define_singleton_method(Berns, "input", external_input_element, -1);
+  rb_define_singleton_method(Berns, "link", external_link_element, -1);
+  rb_define_singleton_method(Berns, "menuitem", external_menuitem_element, -1);
+  rb_define_singleton_method(Berns, "meta", external_meta_element, -1);
+  rb_define_singleton_method(Berns, "param", external_param_element, -1);
+  rb_define_singleton_method(Berns, "source", external_source_element, -1);
+  rb_define_singleton_method(Berns, "track", external_track_element, -1);
+  rb_define_singleton_method(Berns, "wbr", external_wbr_element, -1);
 
   /*
    * List of standard HTML5 elements - https://www.w3schools.com/TAgs/default.asp
@@ -982,98 +687,98 @@ void Init_berns() {
    *   video
    *
    */
-  rb_define_singleton_method(Berns, "a", berns_a_element, -1);
-  rb_define_singleton_method(Berns, "abbr", berns_abbr_element, -1);
-  rb_define_singleton_method(Berns, "address", berns_address_element, -1);
-  rb_define_singleton_method(Berns, "article", berns_article_element, -1);
-  rb_define_singleton_method(Berns, "aside", berns_aside_element, -1);
-  rb_define_singleton_method(Berns, "audio", berns_audio_element, -1);
-  rb_define_singleton_method(Berns, "b", berns_b_element, -1);
-  rb_define_singleton_method(Berns, "bdi", berns_bdi_element, -1);
-  rb_define_singleton_method(Berns, "bdo", berns_bdo_element, -1);
-  rb_define_singleton_method(Berns, "blockquote", berns_blockquote_element, -1);
-  rb_define_singleton_method(Berns, "body", berns_body_element, -1);
-  rb_define_singleton_method(Berns, "button", berns_button_element, -1);
-  rb_define_singleton_method(Berns, "canvas", berns_canvas_element, -1);
-  rb_define_singleton_method(Berns, "caption", berns_caption_element, -1);
-  rb_define_singleton_method(Berns, "cite", berns_cite_element, -1);
-  rb_define_singleton_method(Berns, "code", berns_code_element, -1);
-  rb_define_singleton_method(Berns, "colgroup", berns_colgroup_element, -1);
-  rb_define_singleton_method(Berns, "datalist", berns_datalist_element, -1);
-  rb_define_singleton_method(Berns, "dd", berns_dd_element, -1);
-  rb_define_singleton_method(Berns, "del", berns_del_element, -1);
-  rb_define_singleton_method(Berns, "details", berns_details_element, -1);
-  rb_define_singleton_method(Berns, "dfn", berns_dfn_element, -1);
-  rb_define_singleton_method(Berns, "dialog", berns_dialog_element, -1);
-  rb_define_singleton_method(Berns, "div", berns_div_element, -1);
-  rb_define_singleton_method(Berns, "dl", berns_dl_element, -1);
-  rb_define_singleton_method(Berns, "dt", berns_dt_element, -1);
-  rb_define_singleton_method(Berns, "em", berns_em_element, -1);
-  rb_define_singleton_method(Berns, "fieldset", berns_fieldset_element, -1);
-  rb_define_singleton_method(Berns, "figcaption", berns_figcaption_element, -1);
-  rb_define_singleton_method(Berns, "figure", berns_figure_element, -1);
-  rb_define_singleton_method(Berns, "footer", berns_footer_element, -1);
-  rb_define_singleton_method(Berns, "form", berns_form_element, -1);
-  rb_define_singleton_method(Berns, "h1", berns_h1_element, -1);
-  rb_define_singleton_method(Berns, "h2", berns_h2_element, -1);
-  rb_define_singleton_method(Berns, "h3", berns_h3_element, -1);
-  rb_define_singleton_method(Berns, "h4", berns_h4_element, -1);
-  rb_define_singleton_method(Berns, "h5", berns_h5_element, -1);
-  rb_define_singleton_method(Berns, "h6", berns_h6_element, -1);
-  rb_define_singleton_method(Berns, "head", berns_head_element, -1);
-  rb_define_singleton_method(Berns, "header", berns_header_element, -1);
-  rb_define_singleton_method(Berns, "html", berns_html_element, -1);
-  rb_define_singleton_method(Berns, "i", berns_i_element, -1);
-  rb_define_singleton_method(Berns, "iframe", berns_iframe_element, -1);
-  rb_define_singleton_method(Berns, "ins", berns_ins_element, -1);
-  rb_define_singleton_method(Berns, "kbd", berns_kbd_element, -1);
-  rb_define_singleton_method(Berns, "label", berns_label_element, -1);
-  rb_define_singleton_method(Berns, "legend", berns_legend_element, -1);
-  rb_define_singleton_method(Berns, "li", berns_li_element, -1);
-  rb_define_singleton_method(Berns, "main", berns_main_element, -1);
-  rb_define_singleton_method(Berns, "map", berns_map_element, -1);
-  rb_define_singleton_method(Berns, "mark", berns_mark_element, -1);
-  rb_define_singleton_method(Berns, "menu", berns_menu_element, -1);
-  rb_define_singleton_method(Berns, "meter", berns_meter_element, -1);
-  rb_define_singleton_method(Berns, "nav", berns_nav_element, -1);
-  rb_define_singleton_method(Berns, "noscript", berns_noscript_element, -1);
-  rb_define_singleton_method(Berns, "object", berns_object_element, -1);
-  rb_define_singleton_method(Berns, "ol", berns_ol_element, -1);
-  rb_define_singleton_method(Berns, "optgroup", berns_optgroup_element, -1);
-  rb_define_singleton_method(Berns, "option", berns_option_element, -1);
-  rb_define_singleton_method(Berns, "output", berns_output_element, -1);
-  rb_define_singleton_method(Berns, "p", berns_p_element, -1);
-  rb_define_singleton_method(Berns, "picture", berns_picture_element, -1);
-  rb_define_singleton_method(Berns, "pre", berns_pre_element, -1);
-  rb_define_singleton_method(Berns, "progress", berns_progress_element, -1);
-  rb_define_singleton_method(Berns, "q", berns_q_element, -1);
-  rb_define_singleton_method(Berns, "rp", berns_rp_element, -1);
-  rb_define_singleton_method(Berns, "rt", berns_rt_element, -1);
-  rb_define_singleton_method(Berns, "ruby", berns_ruby_element, -1);
-  rb_define_singleton_method(Berns, "s", berns_s_element, -1);
-  rb_define_singleton_method(Berns, "samp", berns_samp_element, -1);
-  rb_define_singleton_method(Berns, "script", berns_script_element, -1);
-  rb_define_singleton_method(Berns, "section", berns_section_element, -1);
-  rb_define_singleton_method(Berns, "select", berns_select_element, -1);
-  rb_define_singleton_method(Berns, "small", berns_small_element, -1);
-  rb_define_singleton_method(Berns, "span", berns_span_element, -1);
-  rb_define_singleton_method(Berns, "strong", berns_strong_element, -1);
-  rb_define_singleton_method(Berns, "style", berns_style_element, -1);
-  rb_define_singleton_method(Berns, "sub", berns_sub_element, -1);
-  rb_define_singleton_method(Berns, "summary", berns_summary_element, -1);
-  rb_define_singleton_method(Berns, "table", berns_table_element, -1);
-  rb_define_singleton_method(Berns, "tbody", berns_tbody_element, -1);
-  rb_define_singleton_method(Berns, "td", berns_td_element, -1);
-  rb_define_singleton_method(Berns, "template", berns_template_element, -1);
-  rb_define_singleton_method(Berns, "textarea", berns_textarea_element, -1);
-  rb_define_singleton_method(Berns, "tfoot", berns_tfoot_element, -1);
-  rb_define_singleton_method(Berns, "th", berns_th_element, -1);
-  rb_define_singleton_method(Berns, "thead", berns_thead_element, -1);
-  rb_define_singleton_method(Berns, "time", berns_time_element, -1);
-  rb_define_singleton_method(Berns, "title", berns_title_element, -1);
-  rb_define_singleton_method(Berns, "tr", berns_tr_element, -1);
-  rb_define_singleton_method(Berns, "u", berns_u_element, -1);
-  rb_define_singleton_method(Berns, "ul", berns_ul_element, -1);
-  rb_define_singleton_method(Berns, "var", berns_var_element, -1);
-  rb_define_singleton_method(Berns, "video", berns_video_element, -1);
+  rb_define_singleton_method(Berns, "a", external_a_element, -1);
+  rb_define_singleton_method(Berns, "abbr", external_abbr_element, -1);
+  rb_define_singleton_method(Berns, "address", external_address_element, -1);
+  rb_define_singleton_method(Berns, "article", external_article_element, -1);
+  rb_define_singleton_method(Berns, "aside", external_aside_element, -1);
+  rb_define_singleton_method(Berns, "audio", external_audio_element, -1);
+  rb_define_singleton_method(Berns, "b", external_b_element, -1);
+  rb_define_singleton_method(Berns, "bdi", external_bdi_element, -1);
+  rb_define_singleton_method(Berns, "bdo", external_bdo_element, -1);
+  rb_define_singleton_method(Berns, "blockquote", external_blockquote_element, -1);
+  rb_define_singleton_method(Berns, "body", external_body_element, -1);
+  rb_define_singleton_method(Berns, "button", external_button_element, -1);
+  rb_define_singleton_method(Berns, "canvas", external_canvas_element, -1);
+  rb_define_singleton_method(Berns, "caption", external_caption_element, -1);
+  rb_define_singleton_method(Berns, "cite", external_cite_element, -1);
+  rb_define_singleton_method(Berns, "code", external_code_element, -1);
+  rb_define_singleton_method(Berns, "colgroup", external_colgroup_element, -1);
+  rb_define_singleton_method(Berns, "datalist", external_datalist_element, -1);
+  rb_define_singleton_method(Berns, "dd", external_dd_element, -1);
+  rb_define_singleton_method(Berns, "del", external_del_element, -1);
+  rb_define_singleton_method(Berns, "details", external_details_element, -1);
+  rb_define_singleton_method(Berns, "dfn", external_dfn_element, -1);
+  rb_define_singleton_method(Berns, "dialog", external_dialog_element, -1);
+  rb_define_singleton_method(Berns, "div", external_div_element, -1);
+  rb_define_singleton_method(Berns, "dl", external_dl_element, -1);
+  rb_define_singleton_method(Berns, "dt", external_dt_element, -1);
+  rb_define_singleton_method(Berns, "em", external_em_element, -1);
+  rb_define_singleton_method(Berns, "fieldset", external_fieldset_element, -1);
+  rb_define_singleton_method(Berns, "figcaption", external_figcaption_element, -1);
+  rb_define_singleton_method(Berns, "figure", external_figure_element, -1);
+  rb_define_singleton_method(Berns, "footer", external_footer_element, -1);
+  rb_define_singleton_method(Berns, "form", external_form_element, -1);
+  rb_define_singleton_method(Berns, "h1", external_h1_element, -1);
+  rb_define_singleton_method(Berns, "h2", external_h2_element, -1);
+  rb_define_singleton_method(Berns, "h3", external_h3_element, -1);
+  rb_define_singleton_method(Berns, "h4", external_h4_element, -1);
+  rb_define_singleton_method(Berns, "h5", external_h5_element, -1);
+  rb_define_singleton_method(Berns, "h6", external_h6_element, -1);
+  rb_define_singleton_method(Berns, "head", external_head_element, -1);
+  rb_define_singleton_method(Berns, "header", external_header_element, -1);
+  rb_define_singleton_method(Berns, "html", external_html_element, -1);
+  rb_define_singleton_method(Berns, "i", external_i_element, -1);
+  rb_define_singleton_method(Berns, "iframe", external_iframe_element, -1);
+  rb_define_singleton_method(Berns, "ins", external_ins_element, -1);
+  rb_define_singleton_method(Berns, "kbd", external_kbd_element, -1);
+  rb_define_singleton_method(Berns, "label", external_label_element, -1);
+  rb_define_singleton_method(Berns, "legend", external_legend_element, -1);
+  rb_define_singleton_method(Berns, "li", external_li_element, -1);
+  rb_define_singleton_method(Berns, "main", external_main_element, -1);
+  rb_define_singleton_method(Berns, "map", external_map_element, -1);
+  rb_define_singleton_method(Berns, "mark", external_mark_element, -1);
+  rb_define_singleton_method(Berns, "menu", external_menu_element, -1);
+  rb_define_singleton_method(Berns, "meter", external_meter_element, -1);
+  rb_define_singleton_method(Berns, "nav", external_nav_element, -1);
+  rb_define_singleton_method(Berns, "noscript", external_noscript_element, -1);
+  rb_define_singleton_method(Berns, "object", external_object_element, -1);
+  rb_define_singleton_method(Berns, "ol", external_ol_element, -1);
+  rb_define_singleton_method(Berns, "optgroup", external_optgroup_element, -1);
+  rb_define_singleton_method(Berns, "option", external_option_element, -1);
+  rb_define_singleton_method(Berns, "output", external_output_element, -1);
+  rb_define_singleton_method(Berns, "p", external_p_element, -1);
+  rb_define_singleton_method(Berns, "picture", external_picture_element, -1);
+  rb_define_singleton_method(Berns, "pre", external_pre_element, -1);
+  rb_define_singleton_method(Berns, "progress", external_progress_element, -1);
+  rb_define_singleton_method(Berns, "q", external_q_element, -1);
+  rb_define_singleton_method(Berns, "rp", external_rp_element, -1);
+  rb_define_singleton_method(Berns, "rt", external_rt_element, -1);
+  rb_define_singleton_method(Berns, "ruby", external_ruby_element, -1);
+  rb_define_singleton_method(Berns, "s", external_s_element, -1);
+  rb_define_singleton_method(Berns, "samp", external_samp_element, -1);
+  rb_define_singleton_method(Berns, "script", external_script_element, -1);
+  rb_define_singleton_method(Berns, "section", external_section_element, -1);
+  rb_define_singleton_method(Berns, "select", external_select_element, -1);
+  rb_define_singleton_method(Berns, "small", external_small_element, -1);
+  rb_define_singleton_method(Berns, "span", external_span_element, -1);
+  rb_define_singleton_method(Berns, "strong", external_strong_element, -1);
+  rb_define_singleton_method(Berns, "style", external_style_element, -1);
+  rb_define_singleton_method(Berns, "sub", external_sub_element, -1);
+  rb_define_singleton_method(Berns, "summary", external_summary_element, -1);
+  rb_define_singleton_method(Berns, "table", external_table_element, -1);
+  rb_define_singleton_method(Berns, "tbody", external_tbody_element, -1);
+  rb_define_singleton_method(Berns, "td", external_td_element, -1);
+  rb_define_singleton_method(Berns, "template", external_template_element, -1);
+  rb_define_singleton_method(Berns, "textarea", external_textarea_element, -1);
+  rb_define_singleton_method(Berns, "tfoot", external_tfoot_element, -1);
+  rb_define_singleton_method(Berns, "th", external_th_element, -1);
+  rb_define_singleton_method(Berns, "thead", external_thead_element, -1);
+  rb_define_singleton_method(Berns, "time", external_time_element, -1);
+  rb_define_singleton_method(Berns, "title", external_title_element, -1);
+  rb_define_singleton_method(Berns, "tr", external_tr_element, -1);
+  rb_define_singleton_method(Berns, "u", external_u_element, -1);
+  rb_define_singleton_method(Berns, "ul", external_ul_element, -1);
+  rb_define_singleton_method(Berns, "var", external_var_element, -1);
+  rb_define_singleton_method(Berns, "video", external_video_element, -1);
 }
