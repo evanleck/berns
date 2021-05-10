@@ -1,5 +1,19 @@
 * Berns Changelog
 
+** 3.1.0
+
+Version 3.1.0 is a major refactor of the underlying C code introduced with
+version 3.0.0 that benefits from everything learned in the initial
+implementation.
+
+The API has been split between internal and external functions. Internal
+functions accept a mix of C types and Ruby object types but tend to return C
+types. These are composed together into external functions that accept Ruby
+objects as arguments and return Ruby strings.
+
+In addition, HTML escaping is now powered by the excellent [[https://github.com/k0kubun/hescape][k0kubun/hescape]]
+library written by Takashi Kokubun.
+
 ** 3.0.6
 
 Convert non-string blocks of content into strings. This allows, for example,

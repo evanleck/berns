@@ -61,7 +61,8 @@ Berns.to_attribute('class', 'my-class another-class') # => 'class="my-class anot
 Berns.to_attribute('data', { foo: 'bar' }) # => 'data-foo="bar"'
 #+end_src
 
-All attribute values are HTML-escaped using =CGI.escapeHTML=.
+All attribute values are HTML-escaped using [[https://github.com/k0kubun/hescape][k0kubun/hescape]] written by Takashi
+Kokubun.
 
 *** =to_attributes(attributes)=
 
@@ -74,8 +75,9 @@ Berns.to_attributes({ 'data' => { foo: 'bar' }, 'class' => 'my-class another-cla
 
 *** =escape_html(string)=
 
-The =escape_html= method is a passthrough to =CGI.escapeHTML= and does what it
-says on the tin.
+The =escape_html= method escapes HTML entities in strings using [[https://github.com/k0kubun/hescape][k0kubun/hescape]]
+written by Takashi Kokubun. As noted in the hescape repository, it should be the
+same as =CGI.escapeHTML=.
 
 #+begin_src ruby
 Berns.escape_html('<"tag"') # => '&lt;&quot;tag&quot;'
