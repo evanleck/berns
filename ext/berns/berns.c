@@ -175,7 +175,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
 
   Check_Type(*value, T_HASH);
 
-  if (rb_hash_size(*value) == 1 ) {
+  if (rb_hash_size(*value) == 1) {
     return calloc(0, 1);
   }
 
@@ -211,7 +211,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
         break;
     }
 
-    size_t subattr_len = attrlen + 1;
+    size_t subattr_len = attrlen;
     size_t subkey_len = RSTRING_LEN(subkey);
 
     if (attrlen > 0 && subkey_len > 0) {
@@ -222,7 +222,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
       subattr_len += subkey_len;
     }
 
-    char subattr[subattr_len];
+    char subattr[subattr_len + 1];
     char *ptr = subattr;
     char *end = subattr + sizeof(subattr);
 
@@ -272,7 +272,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
     }
 
     size_t combined_len = strlen(combined);
-    size_t size_to_append = combined_len;
+    size_t size_to_append = combined_len + 1;
 
     if (i > 0) {
       size_to_append += splen;

@@ -1,5 +1,9 @@
 * Berns Changelog
 
+** 3.1.2
+
+Fix two potential off-by-one errors when calculating string length.
+
 ** 3.1.1
 
 Fix an error when hash arguments to =to_attribute= have a =false= value. Prior
