@@ -170,13 +170,13 @@ static char * string_value_to_attribute(const char *attr, const size_t attrlen, 
 
 static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *value) {
   if (TYPE(*value) == T_IMEMO) {
-    return calloc(0, 1);
+    return strdup("");
   }
 
   Check_Type(*value, T_HASH);
 
   if (rb_hash_size(*value) == 1) {
-    return calloc(0, 1);
+    return strdup("");
   }
 
   VALUE subkey;
@@ -240,7 +240,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
 
     switch(TYPE(subvalue)) {
       case T_FALSE:
-        combined = calloc(0, 1);
+        combined = strdup("");
         break;
 
       case T_TRUE:
@@ -333,7 +333,7 @@ static char * to_attribute(VALUE attr, VALUE *value) {
       val = empty_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr));
       break;
     case T_FALSE:
-      val = calloc(0, 1);
+      val = strdup("");
       break;
     case T_HASH:
       val = hash_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), value);
