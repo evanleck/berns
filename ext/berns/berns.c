@@ -243,6 +243,8 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
         combined = strdup("");
         break;
 
+      case T_NIL:
+        /* Fall through. */
       case T_TRUE:
         combined = string_value_to_attribute(subattr, subattr_len, "", 0);
         break;
@@ -253,11 +255,6 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
 
       case T_SYMBOL:
         subvalue = rb_sym2str(subvalue);
-        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
-        break;
-
-      case T_NIL:
-        subvalue = rb_utf8_str_new_cstr("");
         combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
 
