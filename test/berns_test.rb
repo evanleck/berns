@@ -65,6 +65,10 @@ describe Berns do
       assert_equal '', Berns.to_attribute('', { required: false })
     end
 
+    it 'handles unicode characters fine' do
+      assert_equal %(href="Working… on it"), Berns.to_attribute(:href, 'Working… on it')
+    end
+
     it 'returns an empty string for empty attributes' do
       assert_equal '', Berns.to_attribute(:data, {})
       assert_equal '', Berns.to_attribute(:data, { more: {} })
@@ -108,6 +112,10 @@ describe Berns do
       assert_raises(TypeError) { Berns.to_attributes([]) }
       assert_raises(TypeError) { Berns.to_attributes('nah') }
       assert_raises(TypeError) { Berns.to_attributes(:nope) }
+    end
+
+    it 'handles unicode characters fine' do
+      assert_equal %(href="Working… on it"), Berns.to_attributes(href: 'Working… on it')
     end
   end
 
@@ -182,6 +190,14 @@ describe Berns do
       assert_equal Encoding::UTF_8, Berns.element('div').encoding
       assert_equal Encoding::UTF_8, Berns.void('br').encoding
       assert_equal Encoding::UTF_8, Berns.to_attributes(href: { stuff: { another: 'foobar' }, blerg: 'Flerr' }).encoding
+    end
+
+    it 'converts to UTF-8' do
+      ascii = (+'This is an ASCII…string').force_encoding(Encoding::US_ASCII)
+      result = Berns.to_attributes(href: ascii)
+
+      assert_equal Encoding::UTF_8, result.encoding
+      assert_equal %(href="This is an ASCII…string"), result
     end
   end
 

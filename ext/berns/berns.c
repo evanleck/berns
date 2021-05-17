@@ -51,7 +51,7 @@ static const size_t sllen = 1;
     rb_check_arity(argc, 0, 1); \
     \
     char *tag = #element_name; \
-    char *string = void_element(tag, strlen(tag), &argv[0]); \
+    char *string = void_element(tag, strlen(tag), argv[0]); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
     \
@@ -67,7 +67,7 @@ static const size_t sllen = 1;
     \
     CONTENT_FROM_BLOCK; \
     char *tag = #element_name; \
-    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), &argv[0]); \
+    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), argv[0]); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
     \
@@ -168,21 +168,21 @@ static char * string_value_to_attribute(const char *attr, const size_t attrlen, 
   }
 }
 
-static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *value) {
-  if (TYPE(*value) == T_IMEMO) {
+static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE value) {
+  if (TYPE(value) == T_IMEMO) {
     return strdup("");
   }
 
-  Check_Type(*value, T_HASH);
+  Check_Type(value, T_HASH);
 
-  if (rb_hash_size(*value) == 1) {
+  if (rb_hash_size(value) == 1) {
     return strdup("");
   }
 
   VALUE subkey;
   VALUE subvalue;
 
-  const VALUE keys = rb_funcall(*value, rb_intern("keys"), 0);
+  const VALUE keys = rb_funcall(value, rb_intern("keys"), 0);
   const VALUE length = RARRAY_LEN(keys);
 
   size_t allocated = 256;
@@ -194,7 +194,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
 
   for (unsigned int i = 0; i < length; i++) {
     subkey = rb_ary_entry(keys, i);
-    subvalue = rb_hash_aref(*value, subkey);
+    subvalue = rb_hash_aref(value, subkey);
 
     switch(TYPE(subkey)) {
       case T_STRING:
@@ -259,7 +259,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
         break;
 
       case T_HASH:
-        combined = hash_value_to_attribute(subattr, subattr_len, &subvalue);
+        combined = hash_value_to_attribute(subattr, subattr_len, subvalue);
         break;
 
       default:
@@ -310,7 +310,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE *v
 /*
  * Convert an attribute name and value into a string.
  */
-static char * to_attribute(VALUE attr, VALUE *value) {
+static char * to_attribute(VALUE attr, VALUE value) {
   switch(TYPE(attr)) {
     case T_SYMBOL:
       attr = rb_sym2str(attr);
@@ -324,7 +324,7 @@ static char * to_attribute(VALUE attr, VALUE *value) {
   char *val = NULL;
   VALUE str;
 
-  switch(TYPE(*value)) {
+  switch(TYPE(value)) {
     case T_NIL:
     case T_TRUE:
       val = empty_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr));
@@ -336,14 +336,14 @@ static char * to_attribute(VALUE attr, VALUE *value) {
       val = hash_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), value);
       break;
     case T_STRING:
-      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(*value), RSTRING_LEN(*value));
+      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(value), RSTRING_LEN(value));
       break;
     case T_SYMBOL:
-      str = rb_sym2str(*value);
+      str = rb_sym2str(value);
       val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(str), RSTRING_LEN(str));
       break;
     default:
-      str = rb_funcall(*value, rb_intern("to_s"), 0);
+      str = rb_funcall(value, rb_intern("to_s"), 0);
       val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(str), RSTRING_LEN(str));
       break;
   }
@@ -369,7 +369,7 @@ static VALUE external_to_attribute(RB_UNUSED_VAR(VALUE self), VALUE attr, VALUE 
 
   StringValue(attr);
 
-  char *val = to_attribute(attr, &value);
+  char *val = to_attribute(attr, value);
   VALUE rstring = rb_utf8_str_new_cstr(val);
   free(val);
 
@@ -390,7 +390,7 @@ static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes)
   }
 
   char *empty = "";
-  char *attrs = hash_value_to_attribute(empty, 0, &attributes);
+  char *attrs = hash_value_to_attribute(empty, 0, attributes);
 
   VALUE rstring = rb_utf8_str_new_cstr(attrs);
   free(attrs);
@@ -398,9 +398,9 @@ static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes)
   return rstring;
 }
 
-static char * void_element(char *tag, size_t tlen, VALUE *attributes) {
+static char * void_element(char *tag, size_t tlen, VALUE attributes) {
   /* T_IMEMO is what we get if an optional argument was not passed. */
-  if (TYPE(*attributes) == T_IMEMO) {
+  if (TYPE(attributes) == T_IMEMO) {
     size_t total = tag_olen + tlen + tag_clen + 1;
     char *string = malloc(total);
     char *ptr;
@@ -451,7 +451,7 @@ static VALUE external_void_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VAL
 
   StringValue(tag);
 
-  char *string = void_element(RSTRING_PTR(tag), RSTRING_LEN(tag), &attributes);
+  char *string = void_element(RSTRING_PTR(tag), RSTRING_LEN(tag), attributes);
   VALUE rstring = rb_utf8_str_new_cstr(string);
 
   free(string);
@@ -459,7 +459,7 @@ static VALUE external_void_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VAL
   return rstring;
 }
 
-static char * element(char *tag, size_t tlen, char *content, size_t conlen, VALUE *attributes) {
+static char * element(char *tag, size_t tlen, char *content, size_t conlen, VALUE attributes) {
   char *empty = "";
   char *attrs = hash_value_to_attribute(empty, 0, attributes);
   size_t alen = strlen(attrs);
@@ -526,7 +526,7 @@ static VALUE external_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VALUE se
 
   CONTENT_FROM_BLOCK;
 
-  char *string = element(RSTRING_PTR(tag), RSTRING_LEN(tag), RSTRING_PTR(content), RSTRING_LEN(content), &attributes);
+  char *string = element(RSTRING_PTR(tag), RSTRING_LEN(tag), RSTRING_PTR(content), RSTRING_LEN(content), attributes);
   VALUE rstring = rb_utf8_str_new_cstr(string);
   free(string);
 
