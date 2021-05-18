@@ -47,11 +47,12 @@ static const size_t sllen = 1;
  * Macro to define a "dynamic" function that generates a void element.
  */
 #define VOID_ELEMENT(element_name) \
-  static VALUE external_##element_name##_element(int argc, VALUE* argv, RB_UNUSED_VAR(VALUE self)) { \
+  static VALUE external_##element_name##_element(int argc, VALUE *argv, RB_UNUSED_VAR(VALUE self)) { \
     rb_check_arity(argc, 0, 1); \
     \
+    VALUE attrs = argv[0]; \
     char *tag = #element_name; \
-    char *string = void_element(tag, strlen(tag), argv[0]); \
+    char *string = void_element(tag, strlen(tag), attrs); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
     \
@@ -62,12 +63,13 @@ static const size_t sllen = 1;
  * Macro to define a "dynamic" function that generates a standard element.
  */
 #define STANDARD_ELEMENT(element_name) \
-  static VALUE external_##element_name##_element(int argc, VALUE* argv, RB_UNUSED_VAR(VALUE self)) { \
+  static VALUE external_##element_name##_element(int argc, VALUE *argv, RB_UNUSED_VAR(VALUE self)) { \
     rb_check_arity(argc, 0, 1); \
     \
     CONTENT_FROM_BLOCK; \
+    VALUE attrs = argv[0]; \
     char *tag = #element_name; \
-    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), argv[0]); \
+    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), attrs); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
     \
@@ -79,11 +81,15 @@ static const size_t sllen = 1;
  * "Safe strcpy" - https://twitter.com/hyc_symas/status/1102573036534972416?s=12
 */
 static char *stecpy(char *destination, const char *source, const char *end) {
+  if (end) {
+    end--;
+  }
+
   while (*source && destination < end) {
     *destination++ = *source++;
   }
 
-  if (destination < end) {
+  if (destination) {
     *destination = '\0';
   }
 
@@ -123,7 +129,6 @@ static VALUE external_escape_html(const VALUE self, VALUE string) {
 static char * empty_value_to_attribute(const char *attr, const size_t attrlen) {
   size_t total_size = attrlen + 1;
   char *dest = malloc(total_size);
-  char *ptr = NULL;
   char *end = dest + total_size;
 
   stecpy(dest, attr, end);
@@ -140,7 +145,6 @@ static char * string_value_to_attribute(const char *attr, const size_t attrlen, 
   if (vallen == 0) {
     size_t total_size = attrlen + 1;
     char *dest = malloc(total_size);
-    char *ptr = NULL;
     char *end = dest + total_size;
 
     stecpy(dest, attr, end);
@@ -224,7 +228,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE va
 
     char subattr[subattr_len + 1];
     char *ptr = subattr;
-    char *end = subattr + sizeof(subattr);
+    char *end = subattr + subattr_len + 1;
 
     if (attrlen > 0) {
       ptr = stecpy(ptr, attr, end);
@@ -246,7 +250,7 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE va
       case T_NIL:
         /* Fall through. */
       case T_TRUE:
-        combined = string_value_to_attribute(subattr, subattr_len, "", 0);
+        combined = empty_value_to_attribute(subattr, subattr_len);
         break;
 
       case T_STRING:
@@ -326,6 +330,7 @@ static char * to_attribute(VALUE attr, VALUE value) {
 
   switch(TYPE(value)) {
     case T_NIL:
+      /* Fall through. */
     case T_TRUE:
       val = empty_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr));
       break;
@@ -533,116 +538,116 @@ static VALUE external_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VALUE se
   return rstring;
 }
 
-VOID_ELEMENT(area);
-VOID_ELEMENT(base);
-VOID_ELEMENT(br);
-VOID_ELEMENT(col);
-VOID_ELEMENT(embed);
-VOID_ELEMENT(hr);
-VOID_ELEMENT(img);
-VOID_ELEMENT(input);
-VOID_ELEMENT(link);
-VOID_ELEMENT(menuitem);
-VOID_ELEMENT(meta);
-VOID_ELEMENT(param);
-VOID_ELEMENT(source);
-VOID_ELEMENT(track);
-VOID_ELEMENT(wbr);
+VOID_ELEMENT(area)
+VOID_ELEMENT(base)
+VOID_ELEMENT(br)
+VOID_ELEMENT(col)
+VOID_ELEMENT(embed)
+VOID_ELEMENT(hr)
+VOID_ELEMENT(img)
+VOID_ELEMENT(input)
+VOID_ELEMENT(link)
+VOID_ELEMENT(menuitem)
+VOID_ELEMENT(meta)
+VOID_ELEMENT(param)
+VOID_ELEMENT(source)
+VOID_ELEMENT(track)
+VOID_ELEMENT(wbr)
 
-STANDARD_ELEMENT(a);
-STANDARD_ELEMENT(abbr);
-STANDARD_ELEMENT(address);
-STANDARD_ELEMENT(article);
-STANDARD_ELEMENT(aside);
-STANDARD_ELEMENT(audio);
-STANDARD_ELEMENT(b);
-STANDARD_ELEMENT(bdi);
-STANDARD_ELEMENT(bdo);
-STANDARD_ELEMENT(blockquote);
-STANDARD_ELEMENT(body);
-STANDARD_ELEMENT(button);
-STANDARD_ELEMENT(canvas);
-STANDARD_ELEMENT(caption);
-STANDARD_ELEMENT(cite);
-STANDARD_ELEMENT(code);
-STANDARD_ELEMENT(colgroup);
-STANDARD_ELEMENT(datalist);
-STANDARD_ELEMENT(dd);
-STANDARD_ELEMENT(del);
-STANDARD_ELEMENT(details);
-STANDARD_ELEMENT(dfn);
-STANDARD_ELEMENT(dialog);
-STANDARD_ELEMENT(div);
-STANDARD_ELEMENT(dl);
-STANDARD_ELEMENT(dt);
-STANDARD_ELEMENT(em);
-STANDARD_ELEMENT(fieldset);
-STANDARD_ELEMENT(figcaption);
-STANDARD_ELEMENT(figure);
-STANDARD_ELEMENT(footer);
-STANDARD_ELEMENT(form);
-STANDARD_ELEMENT(h1);
-STANDARD_ELEMENT(h2);
-STANDARD_ELEMENT(h3);
-STANDARD_ELEMENT(h4);
-STANDARD_ELEMENT(h5);
-STANDARD_ELEMENT(h6);
-STANDARD_ELEMENT(head);
-STANDARD_ELEMENT(header);
-STANDARD_ELEMENT(html);
-STANDARD_ELEMENT(i);
-STANDARD_ELEMENT(iframe);
-STANDARD_ELEMENT(ins);
-STANDARD_ELEMENT(kbd);
-STANDARD_ELEMENT(label);
-STANDARD_ELEMENT(legend);
-STANDARD_ELEMENT(li);
-STANDARD_ELEMENT(main);
-STANDARD_ELEMENT(map);
-STANDARD_ELEMENT(mark);
-STANDARD_ELEMENT(menu);
-STANDARD_ELEMENT(meter);
-STANDARD_ELEMENT(nav);
-STANDARD_ELEMENT(noscript);
-STANDARD_ELEMENT(object);
-STANDARD_ELEMENT(ol);
-STANDARD_ELEMENT(optgroup);
-STANDARD_ELEMENT(option);
-STANDARD_ELEMENT(output);
-STANDARD_ELEMENT(p);
-STANDARD_ELEMENT(picture);
-STANDARD_ELEMENT(pre);
-STANDARD_ELEMENT(progress);
-STANDARD_ELEMENT(q);
-STANDARD_ELEMENT(rp);
-STANDARD_ELEMENT(rt);
-STANDARD_ELEMENT(ruby);
-STANDARD_ELEMENT(s);
-STANDARD_ELEMENT(samp);
-STANDARD_ELEMENT(script);
-STANDARD_ELEMENT(section);
-STANDARD_ELEMENT(select);
-STANDARD_ELEMENT(small);
-STANDARD_ELEMENT(span);
-STANDARD_ELEMENT(strong);
-STANDARD_ELEMENT(style);
-STANDARD_ELEMENT(sub);
-STANDARD_ELEMENT(summary);
-STANDARD_ELEMENT(table);
-STANDARD_ELEMENT(tbody);
-STANDARD_ELEMENT(td);
-STANDARD_ELEMENT(template);
-STANDARD_ELEMENT(textarea);
-STANDARD_ELEMENT(tfoot);
-STANDARD_ELEMENT(th);
-STANDARD_ELEMENT(thead);
-STANDARD_ELEMENT(time);
-STANDARD_ELEMENT(title);
-STANDARD_ELEMENT(tr);
-STANDARD_ELEMENT(u);
-STANDARD_ELEMENT(ul);
-STANDARD_ELEMENT(var);
-STANDARD_ELEMENT(video);
+STANDARD_ELEMENT(a)
+STANDARD_ELEMENT(abbr)
+STANDARD_ELEMENT(address)
+STANDARD_ELEMENT(article)
+STANDARD_ELEMENT(aside)
+STANDARD_ELEMENT(audio)
+STANDARD_ELEMENT(b)
+STANDARD_ELEMENT(bdi)
+STANDARD_ELEMENT(bdo)
+STANDARD_ELEMENT(blockquote)
+STANDARD_ELEMENT(body)
+STANDARD_ELEMENT(button)
+STANDARD_ELEMENT(canvas)
+STANDARD_ELEMENT(caption)
+STANDARD_ELEMENT(cite)
+STANDARD_ELEMENT(code)
+STANDARD_ELEMENT(colgroup)
+STANDARD_ELEMENT(datalist)
+STANDARD_ELEMENT(dd)
+STANDARD_ELEMENT(del)
+STANDARD_ELEMENT(details)
+STANDARD_ELEMENT(dfn)
+STANDARD_ELEMENT(dialog)
+STANDARD_ELEMENT(div)
+STANDARD_ELEMENT(dl)
+STANDARD_ELEMENT(dt)
+STANDARD_ELEMENT(em)
+STANDARD_ELEMENT(fieldset)
+STANDARD_ELEMENT(figcaption)
+STANDARD_ELEMENT(figure)
+STANDARD_ELEMENT(footer)
+STANDARD_ELEMENT(form)
+STANDARD_ELEMENT(h1)
+STANDARD_ELEMENT(h2)
+STANDARD_ELEMENT(h3)
+STANDARD_ELEMENT(h4)
+STANDARD_ELEMENT(h5)
+STANDARD_ELEMENT(h6)
+STANDARD_ELEMENT(head)
+STANDARD_ELEMENT(header)
+STANDARD_ELEMENT(html)
+STANDARD_ELEMENT(i)
+STANDARD_ELEMENT(iframe)
+STANDARD_ELEMENT(ins)
+STANDARD_ELEMENT(kbd)
+STANDARD_ELEMENT(label)
+STANDARD_ELEMENT(legend)
+STANDARD_ELEMENT(li)
+STANDARD_ELEMENT(main)
+STANDARD_ELEMENT(map)
+STANDARD_ELEMENT(mark)
+STANDARD_ELEMENT(menu)
+STANDARD_ELEMENT(meter)
+STANDARD_ELEMENT(nav)
+STANDARD_ELEMENT(noscript)
+STANDARD_ELEMENT(object)
+STANDARD_ELEMENT(ol)
+STANDARD_ELEMENT(optgroup)
+STANDARD_ELEMENT(option)
+STANDARD_ELEMENT(output)
+STANDARD_ELEMENT(p)
+STANDARD_ELEMENT(picture)
+STANDARD_ELEMENT(pre)
+STANDARD_ELEMENT(progress)
+STANDARD_ELEMENT(q)
+STANDARD_ELEMENT(rp)
+STANDARD_ELEMENT(rt)
+STANDARD_ELEMENT(ruby)
+STANDARD_ELEMENT(s)
+STANDARD_ELEMENT(samp)
+STANDARD_ELEMENT(script)
+STANDARD_ELEMENT(section)
+STANDARD_ELEMENT(select)
+STANDARD_ELEMENT(small)
+STANDARD_ELEMENT(span)
+STANDARD_ELEMENT(strong)
+STANDARD_ELEMENT(style)
+STANDARD_ELEMENT(sub)
+STANDARD_ELEMENT(summary)
+STANDARD_ELEMENT(table)
+STANDARD_ELEMENT(tbody)
+STANDARD_ELEMENT(td)
+STANDARD_ELEMENT(template)
+STANDARD_ELEMENT(textarea)
+STANDARD_ELEMENT(tfoot)
+STANDARD_ELEMENT(th)
+STANDARD_ELEMENT(thead)
+STANDARD_ELEMENT(time)
+STANDARD_ELEMENT(title)
+STANDARD_ELEMENT(tr)
+STANDARD_ELEMENT(u)
+STANDARD_ELEMENT(ul)
+STANDARD_ELEMENT(var)
+STANDARD_ELEMENT(video)
 
 void Init_berns() {
   VALUE Berns = rb_define_module("Berns");
