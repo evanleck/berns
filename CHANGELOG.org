@@ -1,5 +1,14 @@
 * Berns Changelog
 
+** 3.1.5
+
+Several minor fixes including:
+
+- Append to =$CFLAGS= instead of overwriting it.
+- Set =-std=c99=
+- Change optimization level to 2 from 3.
+- Fix a case of variable shadowing.
+
 ** 3.1.4
 
 Stop passing pointers to Ruby's Hash values. I'm not sure that this was ever a
