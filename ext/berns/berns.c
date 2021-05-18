@@ -51,7 +51,7 @@ static const size_t sllen = 1;
     rb_check_arity(argc, 0, 1); \
     \
     VALUE attrs = argv[0]; \
-    char *tag = #element_name; \
+    const char *tag = #element_name; \
     char *string = void_element(tag, strlen(tag), attrs); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
@@ -68,7 +68,7 @@ static const size_t sllen = 1;
     \
     CONTENT_FROM_BLOCK; \
     VALUE attrs = argv[0]; \
-    char *tag = #element_name; \
+    const char *tag = #element_name; \
     char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), attrs); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
@@ -80,7 +80,7 @@ static const size_t sllen = 1;
 /*
  * "Safe strcpy" - https://twitter.com/hyc_symas/status/1102573036534972416?s=12
 */
-static char *stecpy(char *destination, const char *source, const char *end) {
+static char * stecpy(char *destination, const char *source, const char *end) {
   if (end) {
     end--;
   }
@@ -172,7 +172,7 @@ static char * string_value_to_attribute(const char *attr, const size_t attrlen, 
   }
 }
 
-static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE value) {
+static char * hash_value_to_attribute(const char *attr, const size_t attrlen, VALUE value) {
   if (TYPE(value) == T_IMEMO) {
     return strdup("");
   }
@@ -394,7 +394,7 @@ static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes)
     return rb_utf8_str_new_cstr("");
   }
 
-  char *empty = "";
+  const char *empty = "";
   char *attrs = hash_value_to_attribute(empty, 0, attributes);
 
   VALUE rstring = rb_utf8_str_new_cstr(attrs);
@@ -403,7 +403,7 @@ static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes)
   return rstring;
 }
 
-static char * void_element(char *tag, size_t tlen, VALUE attributes) {
+static char * void_element(const char *tag, size_t tlen, VALUE attributes) {
   /* T_IMEMO is what we get if an optional argument was not passed. */
   if (TYPE(attributes) == T_IMEMO) {
     size_t total = tag_olen + tlen + tag_clen + 1;
@@ -417,7 +417,7 @@ static char * void_element(char *tag, size_t tlen, VALUE attributes) {
 
     return string;
   } else {
-    char *empty = "";
+    const char *empty = "";
     char *attrs = hash_value_to_attribute(empty, 0, attributes);
 
     size_t total = tag_olen + tlen + splen + strlen(attrs) + tag_clen + 1;
@@ -464,8 +464,8 @@ static VALUE external_void_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VAL
   return rstring;
 }
 
-static char * element(char *tag, size_t tlen, char *content, size_t conlen, VALUE attributes) {
-  char *empty = "";
+static char * element(const char *tag, size_t tlen, char *content, size_t conlen, VALUE attributes) {
+  const char *empty = "";
   char *attrs = hash_value_to_attribute(empty, 0, attributes);
   size_t alen = strlen(attrs);
 
