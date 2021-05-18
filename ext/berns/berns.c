@@ -228,17 +228,17 @@ static char * hash_value_to_attribute(char *attr, const size_t attrlen, VALUE va
 
     char subattr[subattr_len + 1];
     char *ptr = subattr;
-    char *end = subattr + subattr_len + 1;
+    char *subend = subattr + subattr_len + 1;
 
     if (attrlen > 0) {
-      ptr = stecpy(ptr, attr, end);
+      ptr = stecpy(ptr, attr, subend);
     }
 
     if (attrlen > 0 && subkey_len > 0) {
-      ptr = stecpy(ptr, dash, end);
+      ptr = stecpy(ptr, dash, subend);
     }
 
-    stecpy(ptr, RSTRING_PTR(subkey), end);
+    stecpy(ptr, RSTRING_PTR(subkey), subend);
 
     char *combined;
 
