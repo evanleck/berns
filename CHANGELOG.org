@@ -1,5 +1,12 @@
 * Berns Changelog
 
+** 3.1.6
+
+- Refactor the way =$CFLAGS= are added to use the =append_cflags= method
+  provided by =mkmf=.
+- Add a few more flags including =-flto=.
+- Remove the unneeded =create_header=.
+
 ** 3.1.5
 
 Several minor fixes including:

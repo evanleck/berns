@@ -1,5 +1,4 @@
 #include "ruby.h"
-#include "extconf.h"
 #include "hescape.h"
 
 static const char *attr_close = "\"";

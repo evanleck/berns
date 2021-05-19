@@ -1,8 +1,14 @@
 # frozen_string_literal: true
 require 'mkmf'
 
-$CFLAGS << ' -O2 -msse4 -std=c99' # rubocop:disable Style/GlobalVars
+dir_config 'berns'
 
-dir_config('berns')
-create_header
+append_cflags '-O3'
+append_cflags '-Wshadow'
+append_cflags '-Wstrict-overflow'
+append_cflags '-flto'
+append_cflags '-fno-strict-aliasing'
+append_cflags '-msse4'
+append_cflags '-std=c99'
+
 create_makefile 'berns/berns'
