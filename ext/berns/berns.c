@@ -94,6 +94,41 @@ static char * stecpy(char *destination, const char *source, const char *end) {
 }
 
 /*
+ * The external API for Berns.sanitize
+ *
+ *   string should be a string or nil, anything else will raise an error.
+ *
+ */
+static VALUE external_sanitize(RB_UNUSED_VAR(VALUE self), VALUE string) {
+  if (TYPE(string) == T_NIL) {
+    return Qnil;
+  }
+
+  StringValue(string);
+
+  size_t slen = RSTRING_LEN(string);
+  char *str = RSTRING_PTR(string);
+
+  char dest[slen + 1];
+  int index = 0;
+  int open = 0;
+
+  for (unsigned int i = 0; i < slen; i++) {
+    if (str[i] == '<') {
+      open = 1;
+    } else if (str[i] == '>') {
+      open = 0;
+    } else if (!open) {
+      dest[index++] = str[i];
+    }
+  }
+
+  dest[index] = '\0';
+
+  return rb_utf8_str_new_cstr(dest);
+}
+
+/*
  * The external API for Berns.escape_html.
  *
  *   string should be a string, anything else will raise an error.
@@ -651,6 +686,7 @@ void Init_berns() {
 
   rb_define_singleton_method(Berns, "element", external_element, -1);
   rb_define_singleton_method(Berns, "escape_html", external_escape_html, 1);
+  rb_define_singleton_method(Berns, "sanitize", external_sanitize, 1);
   rb_define_singleton_method(Berns, "to_attribute", external_to_attribute, 2);
   rb_define_singleton_method(Berns, "to_attributes", external_to_attributes, 1);
   rb_define_singleton_method(Berns, "void", external_void_element, -1);

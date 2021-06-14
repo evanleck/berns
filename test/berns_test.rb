@@ -223,8 +223,12 @@ describe Berns do
 
   describe '#sanitize' do
     it 'should remove HTML from strings' do
+      assert_equal 'This should be clean', Berns.sanitize('This should be clean')
       assert_equal 'This should be clean', Berns.sanitize('This <span>should be clean</span>')
       assert_equal 'This should be clean', Berns.sanitize('This <span>should be clean')
+      assert_equal 'This should be clean', Berns.sanitize('This <span class="something">should be clean')
+      assert_equal 'This should be clean', Berns.sanitize('This <span class="something">should be clean<')
+      assert_equal 'This should be clean', Berns.sanitize('<br>This <span>should be <br><br><br />clean')
       assert_nil Berns.sanitize(nil)
     end
   end

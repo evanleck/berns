@@ -91,6 +91,10 @@ The =sanitize= method strips HTML tags from strings.
 Berns.sanitize('This <span>should be clean</span>') # => 'This should be clean'
 #+end_src
 
+Note that this is an extremely naive implementation of HTML sanitization that
+literally just looks for "<" and ">" characters and removes the contents between
+them. This should probably only be used on trusted strings.
+
 *** Standard and void elements
 
 All standard and void HTML elements are defined as methods on Berns, so you can

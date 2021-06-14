@@ -4,6 +4,17 @@ $LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 require 'benchmark/ips'
 require 'berns'
 
+CLEAN = 'This is a page title'
+DIRTY = '<span>This is a </span> page title'
+
+puts 'sanitize'
+Benchmark.ips do |x|
+  x.report('clean') { Berns.sanitize(CLEAN) }
+  x.report('dirty') { Berns.sanitize(DIRTY) }
+
+  x.compare!
+end
+
 puts 'to_attributes'
 Benchmark.ips do |x|
   x.report('simple') { Berns.to_attributes({ ryan: 'started the fire', itjust: 'started burning', hey: "the temp's still learning", this: 'is a super long key that will just keep going on and on and on', more: 'keys are required to trigger a realloc' }) }

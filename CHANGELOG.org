@@ -1,5 +1,25 @@
 * Berns Changelog
 
+** 3.2.0
+
+Rewrite =Berns.sanitize= in C. It's still incredibly naive and, as noted in
+=README.org= should probably only be used with trusted strings.
+
+Before:
+
+#+begin_example
+clean      3.404M (± 0.8%) i/s -     17.251M in   5.069001s
+dirty    690.392k (± 1.7%) i/s -      3.506M in   5.079129s
+#+end_example
+
+
+After:
+
+#+begin_example
+clean      8.744M (± 1.1%) i/s -     43.800M in   5.009626s
+dirty      7.473M (± 0.7%) i/s -     37.734M in   5.049443s
+#+end_example
+
 ** 3.1.6
 
 - Refactor the way =$CFLAGS= are added to use the =append_cflags= method
