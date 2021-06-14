@@ -49,9 +49,8 @@ static const size_t sllen = 1;
   static VALUE external_##element_name##_element(int argc, VALUE *argv, RB_UNUSED_VAR(VALUE self)) { \
     rb_check_arity(argc, 0, 1); \
     \
-    VALUE attrs = argv[0]; \
     const char *tag = #element_name; \
-    char *string = void_element(tag, strlen(tag), attrs); \
+    char *string = void_element(tag, strlen(tag), argv[0]); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
     \
@@ -66,9 +65,8 @@ static const size_t sllen = 1;
     rb_check_arity(argc, 0, 1); \
     \
     CONTENT_FROM_BLOCK; \
-    VALUE attrs = argv[0]; \
     const char *tag = #element_name; \
-    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), attrs); \
+    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), argv[0]); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
     free(string); \
     \
