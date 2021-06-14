@@ -99,7 +99,7 @@ static char * stecpy(char *destination, const char *source, const char *end) {
  *   string should be a string, anything else will raise an error.
  *
  */
-static VALUE external_escape_html(const VALUE self, VALUE string) {
+static VALUE external_escape_html(RB_UNUSED_VAR(VALUE self), VALUE string) {
   StringValue(string);
 
   uint8_t *dest = NULL;
