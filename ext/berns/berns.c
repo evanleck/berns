@@ -112,10 +112,12 @@ static VALUE external_sanitize(RB_UNUSED_VAR(VALUE self), VALUE string) {
   char dest[slen + 1];
   int index = 0;
   int open = 0;
+  int opened = 0;
 
   for (unsigned int i = 0; i < slen; i++) {
     if (str[i] == '<') {
       open = 1;
+      opened = 1;
     } else if (str[i] == '>') {
       open = 0;
     } else if (!open) {
@@ -125,7 +127,15 @@ static VALUE external_sanitize(RB_UNUSED_VAR(VALUE self), VALUE string) {
 
   dest[index] = '\0';
 
-  return rb_utf8_str_new_cstr(dest);
+  /*
+   * If a tag was never opened, return the original string, otherwise create a new
+   * string from our destination buffer.
+   */
+  if (opened) {
+    return rb_utf8_str_new_cstr(dest);
+  } else {
+    return string;
+  }
 }
 
 /*

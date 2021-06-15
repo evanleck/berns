@@ -1,5 +1,24 @@
 * Berns Changelog
 
+** 3.2.1
+
+Tweak =Berns.sanitize= to return the original string if no modifications were
+made.
+
+Before:
+
+#+begin_example
+clean      8.452M (± 1.8%) i/s -     42.530M in   5.033708s
+dirty      7.411M (± 1.1%) i/s -     37.561M in   5.069121s
+#+end_example
+
+After:
+
+#+begin_example
+clean     15.509M (± 1.4%) i/s -     78.419M in   5.057355s
+dirty      7.515M (± 1.1%) i/s -     37.948M in   5.050435s
+#+end_example
+
 ** 3.2.0
 
 Rewrite =Berns.sanitize= in C. It's still incredibly naive and, as noted in
