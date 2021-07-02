@@ -1,5 +1,10 @@
 * Berns Changelog
 
+** 3.3.0
+
+=Berns.sanitize= now removes HTML entities like =&lt;= as well as their
+enescaped equivalents.
+
 ** 3.2.1
 
 Tweak =Berns.sanitize= to return the original string if no modifications were

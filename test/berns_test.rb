@@ -229,6 +229,7 @@ describe Berns do
       assert_equal 'This should be clean', Berns.sanitize('This <span class="something">should be clean')
       assert_equal 'This should be clean', Berns.sanitize('This <span class="something">should be clean<')
       assert_equal 'This should be clean', Berns.sanitize('<br>This <span>should be <br><br><br />clean')
+      assert_equal 'This should be clean', Berns.sanitize('&lt;This <span>should&gt; be <br><br><br />clean')
       assert_nil Berns.sanitize(nil)
     end
   end

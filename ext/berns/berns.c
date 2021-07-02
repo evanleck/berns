@@ -110,17 +110,24 @@ static VALUE external_sanitize(RB_UNUSED_VAR(VALUE self), VALUE string) {
   char *str = RSTRING_PTR(string);
 
   char dest[slen + 1];
-  int index = 0;
-  int open = 0;
-  int opened = 0;
+
+  unsigned int index = 0;
+  unsigned int open = 0;
+  unsigned int modified = 0;
+  unsigned int entity = 0;
 
   for (unsigned int i = 0; i < slen; i++) {
     if (str[i] == '<') {
       open = 1;
-      opened = 1;
+      modified = 1;
     } else if (str[i] == '>') {
       open = 0;
-    } else if (!open) {
+    } else if (str[i] == '&') {
+      entity = 1;
+      modified = 1;
+    } else if (str[i] == ';') {
+      entity = 0;
+    } else if (!open && !entity) {
       dest[index++] = str[i];
     }
   }
@@ -128,10 +135,10 @@ static VALUE external_sanitize(RB_UNUSED_VAR(VALUE self), VALUE string) {
   dest[index] = '\0';
 
   /*
-   * If a tag was never opened, return the original string, otherwise create a new
-   * string from our destination buffer.
+   * If the string was never modified, return the original string, otherwise
+   * create a new string from our destination buffer.
    */
-  if (opened) {
+  if (modified) {
     return rb_utf8_str_new_cstr(dest);
   } else {
     return string;
