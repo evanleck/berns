@@ -5,7 +5,7 @@ require 'rake/extensiontask'
 require 'rake/testtask'
 require 'rubocop/rake_task'
 
-CLEAN.add('tmp', 'lib/berns/berns.so', 'lib/berns/berns.bundle')
+CLEAN.add('pkg', 'tmp', 'lib/berns/berns.so', 'lib/berns/berns.bundle')
 
 Rake::ExtensionTask.new('berns') do |ext|
   ext.lib_dir = 'lib/berns'
