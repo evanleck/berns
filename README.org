@@ -118,3 +118,8 @@ Berns.
 #+begin_example
 area base br col embed hr img input link menuitem meta param source track wbr
 #+end_example
+
+** Trivia
+
+The name "Berns" is taken from the name of [[https://en.wikipedia.org/wiki/HTML#Development][the inventor of HTML]], [[https://en.wikipedia.org/wiki/Tim_Berners-Lee][Sir Tim
+Berners-Lee]].
