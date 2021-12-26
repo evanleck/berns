@@ -1,9 +1,13 @@
-* Berns Changelog
+* Berns changelog
+
+** 3.3.1
+
+Remove the =std=c99= flag.
 
 ** 3.3.0
 
 =Berns.sanitize= now removes HTML entities like =&lt;= as well as their
-enescaped equivalents.
+unescaped equivalents.
 
 ** 3.2.1
 
