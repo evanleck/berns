@@ -11,7 +11,8 @@ Gem::Specification.new do |spec|
   spec.description = spec.summary
   spec.homepage = 'https://github.com/evanleck/berns'
   spec.license = 'MIT'
-  spec.required_ruby_version = Gem::Requirement.new('>= 2.5.0')
+  spec.required_ruby_version = '>= 2.5.0'
+  spec.required_rubygems_version = '>= 2.0'
 
   spec.files = Dir['ext/**/*', 'lib/**/*', 'README.org', 'LICENSE.txt']
   spec.require_paths = ['lib']
@@ -19,6 +20,7 @@ Gem::Specification.new do |spec|
 
   spec.metadata = {
     'bug_tracker_uri' => 'https://github.com/evanleck/berns/issues',
+    'rubygems_mfa_required' => 'true',
     'source_code_uri' => 'https://github.com/evanleck/berns'
   }
 
