@@ -11,12 +11,12 @@ Rake::ExtensionTask.new('berns') do |ext|
   ext.lib_dir = 'lib/berns'
 end
 
-Rake::TestTask.new(:test) do |t|
-  t.deps = %i[clean compile]
-  t.libs << 'lib'
-  t.test_files = FileList['test/**/*_test.rb']
-end
-
 RuboCop::RakeTask.new
 
+Rake::TestTask.new(:test) do |task|
+  task.libs << 'lib'
+  task.test_files = FileList['test/**/*_test.rb']
+end
+
+task suite: %i[clean compile test rubocop]
 task default: %i[test rubocop]

@@ -1,6 +1,6 @@
 name: Ruby
 
-on: [push,pull_request]
+on: [push, pull_request]
 
 jobs:
   test:
@@ -21,4 +21,4 @@ jobs:
         ruby-version: ${{ matrix.ruby-version }}
 
     - name: Run tests & lint
-      run: bundle exec rake
+      run: bundle exec rake suite
