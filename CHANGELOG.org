@@ -1,5 +1,43 @@
 * Berns changelog
 
+** 3.4.0
+
+Add the =Berns::Builder= class, enabling simpler template composition.
+
+This class effectively works like a DSL for HTML template composition. For
+example, to construct an =article= with a heading and paragraph in earlier
+versions you might do something like this:
+
+#+begin_src ruby
+markup = Berns.article do
+  content = Berns.h1 { 'Heading' }
+  content + Berns.p { 'A paragraph.' }
+end
+#+end_src
+
+And the same thing using the new =Berns::Builder= class:
+
+#+begin_src ruby
+template = Berns::Builder.new do
+  article {
+    h1 { 'Heading' }
+    p { 'A paragraph.' }
+  }
+end
+
+markup = template.call # => "<article><h1>Heading</h1><p>A paragraph.</p></article>"
+#+end_src
+
+This has two advantages over the previous approach:
+
+1. There's no need to build the string as you go. Any =Berns= standard or void
+   element method will automatically append to an internal buffer.
+2. There's less repitition since you don't need to add =Berns= in front of each
+   element method call.
+
+This new class is heavily inspired by the likes of [[https://github.com/digital-fabric/papercraft][Papercraft]], [[https://github.com/markaby/markaby][Markaby]], and
+[[https://github.com/activeadmin/arbre][Arbre]].
+
 ** 3.3.1
 
 Remove the =std=c99= flag.
