@@ -95,10 +95,84 @@ Note that this is an extremely naive implementation of HTML sanitization that
 literally just looks for "<" and ">" characters and removes the contents between
 them. This should probably only be used on trusted strings.
 
+*** =build { content }=
+
+The =build= method uses =Berns::Builder= to let you create HTML strings using a DSL.
+
+#+begin_src ruby
+Berns.build { h1 { 'Heading' } } # => '<h1>Heading</h1>'
+#+end_src
+
+See below for more on =Berns::Builder=.
+
+*** =Berns::Builder= HTML DSL
+
+Added in version 3.4.0 and heavily inspired by the likes of [[https://github.com/digital-fabric/papercraft][Papercraft]], [[https://github.com/markaby/markaby][Markaby]],
+and [[https://github.com/activeadmin/arbre][Arbre]], the =Berns::Builder= class lets you create HTML strings using a DSL.
+
+#+begin_src ruby
+template = Berns::Builder.new do
+  h1 { 'Heading' }
+  p(class: 'paragraph') do
+    text 'Bare text here.'
+
+    b { 'Bold text here' }
+  end
+end
+#+end_src
+
+Within the block provided to =Berns::Builder.new= every standard and void
+element is available as a method and each time you use one of those methods the
+result is appended to an internal buffer. In addition, the =#text= method can be
+used to append a plain text string to the buffer and that text will be HTML
+escaped, so it's good for untrusted content.
+
+Once initialized, rendering the template to a string can be done with the
+=#call= method and any arguments, positional or keyword, will be passed through
+as-is to the block provided to =#new=.
+
+#+begin_src ruby
+string = template.call # =>
+# <h1>
+#   Heading
+# </h1>
+# <p class='paragraph'>
+#   Bare text here.
+#   <b>
+#     Bold text here.
+#   </b>
+# </p>
+#+end_src
+
+In addition to initializing a new instance of =Berns::Builder=, you can
+construct and render a template to a string all at once with =Berns.build=.
+
+#+begin_src ruby
+Berns.build do
+  h1 { 'Heading' }
+  p(class: 'paragraph') do
+    text 'Bare text here.'
+
+    b { 'Bold text here' }
+  end
+end # =>
+# <h1>
+#   Heading
+# </h1>
+# <p class='paragraph'>
+#   Bare text here.
+#   <b>
+#     Bold text here.
+#   </b>
+# </p>
+#+end_src
+
 *** Standard and void elements
 
 All standard and void HTML elements are defined as methods on Berns, so you can
-create e.g. a link with =Berns.a=. Below is the full list of standard elements.
+create e.g. a link with =Berns.a=. Below is the full list of standard elements
+which are also available in the constant =Berns::STANDARD= as an array of
+symbols.
 
 #+begin_example
 a abbr address article aside audio b bdi bdo blockquote body button
@@ -111,15 +185,33 @@ table tbody td template textarea tfoot th thead time title tr u ul var
 video
 #+end_example
 
-
 Below is the full list of void elements that are defined as singleton methods on
-Berns.
+Berns which are also available in the constant =Berns::VOID= as an array of
+symbols.
 
 #+begin_example
 area base br col embed hr img input link menuitem meta param source track wbr
 #+end_example
 
+** Performance
+
+Berns 3 is about three times faster than the pure Ruby implementation used in
+version 2. See the file [[file:benchmarks/performance.rb][benchmarks/performance.rb]] for the benchmark code.
+
+#+begin_example
+Warming up --------------------------------------
+             element    27.373k i/100ms
+               berns    94.118k i/100ms
+Calculating -------------------------------------
+             element    314.078k (± 4.5%) i/s -      1.588M in   5.065539s
+               berns    935.528k (± 6.1%) i/s -      4.706M in   5.049718s
+
+Comparison:
+               berns:   935527.9 i/s
+             element:   314078.4 i/s - 2.98x  (± 0.00) slower
+#+end_example
+
 ** Trivia
 
-The name "Berns" is taken from the name of [[https://en.wikipedia.org/wiki/HTML#Development][the inventor of HTML]], [[https://en.wikipedia.org/wiki/Tim_Berners-Lee][Sir Tim
-Berners-Lee]].
+The name "Berns" is taken from the name of [[https://en.wikipedia.org/wiki/HTML#Development][the inventor of HTML]],
+[[https://en.wikipedia.org/wiki/Tim_Berners-Lee][Sir Tim Berners-Lee]].
