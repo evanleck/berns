@@ -30,7 +30,8 @@ module Berns
 
     Berns::STANDARD.each do |meth|
       define_method(meth) do |*args, **opts, &block|
-        @buffer << Berns.send(meth, *args, **opts) { Builder.new.instance_exec(*args, **opts, &block) }
+        content = Builder.new.instance_exec(*args, **opts, &block) if block
+        @buffer << Berns.send(meth, *args, **opts) { content }
       end
     end
 

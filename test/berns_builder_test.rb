@@ -7,10 +7,11 @@ describe Berns::Builder do
     dom = Berns::Builder.new do
       h1 { 'Header' }
       text "where'd this come from?!"
+      div
       p(class: 'para') { 'A paragraph!' }
     end
 
-    assert_equal %(<h1>Header</h1>where&#39;d this come from?!<p class="para">A paragraph!</p>), dom.call
+    assert_equal %(<h1>Header</h1>where&#39;d this come from?!<div></div><p class="para">A paragraph!</p>), dom.call
   end
 
   it 'allows nesting' do
