@@ -1,6 +1,4 @@
 # frozen_string_literal: true
-$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
-
 require 'berns'
 require 'bigdecimal'
 require 'minitest/autorun'
@@ -231,6 +229,17 @@ describe Berns do
       assert_equal 'This should be clean', Berns.sanitize('<br>This <span>should be <br><br><br />clean')
       assert_equal 'This should be clean', Berns.sanitize('&lt;This <span>should&gt; be <br><br><br />clean')
       assert_nil Berns.sanitize(nil)
+    end
+  end
+
+  describe '#build' do
+    it 'is a wrapper around Builder.new' do
+      dom = Berns.build(title: 'TITLE!', para: 'PARAGRAPH!') do |title:, para:|
+        h1 { title }
+        p { para }
+      end
+
+      assert_equal %(<h1>TITLE!</h1><p>PARAGRAPH!</p>), dom
     end
   end
 end
