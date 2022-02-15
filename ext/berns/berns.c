@@ -228,7 +228,7 @@ static char * hash_value_to_attribute(const char *attr, const size_t attrlen, VA
 
   Check_Type(value, T_HASH);
 
-  if (rb_hash_size(value) == 1) {
+  if (RHASH_SIZE(value) == 0) {
     return strdup("");
   }
 
@@ -439,7 +439,7 @@ static VALUE external_to_attribute(RB_UNUSED_VAR(VALUE self), VALUE attr, VALUE 
 static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes) {
   Check_Type(attributes, T_HASH);
 
-  if (rb_hash_size(attributes) == 1) {
+  if (RHASH_SIZE(attributes) == 0) {
     return rb_utf8_str_new_cstr("");
   }
 
