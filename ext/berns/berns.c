@@ -453,37 +453,32 @@ static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes)
 }
 
 static char * void_element(const char *tag, size_t tlen, VALUE attributes) {
-  /* T_IMEMO is what we get if an optional argument was not passed. */
-  if (TYPE(attributes) == T_IMEMO) {
-    size_t total = tag_olen + tlen + tag_clen + 1;
-    char *string = malloc(total);
-    char *ptr;
-    char *end = string + total;
+  const char *empty = "";
+  char *attrs = hash_value_to_attribute(empty, 0, attributes);
+  size_t alen = strlen(attrs);
 
-    ptr = stecpy(string, tag_open, end);
-    ptr = stecpy(ptr, tag, end);
-    ptr = stecpy(ptr, tag_close, end);
+  size_t total = tag_olen + tlen + tag_clen + 1;
 
-    return string;
-  } else {
-    const char *empty = "";
-    char *attrs = hash_value_to_attribute(empty, 0, attributes);
+  /* If we have some attributes, add a space and the attributes' length. */
+  if (alen > 0) {
+    total += splen + alen;
+  }
 
-    size_t total = tag_olen + tlen + splen + strlen(attrs) + tag_clen + 1;
-    char *string = malloc(total);
-    char *ptr;
-    char *end = string + total;
+  char *dest = malloc(total);
+  char *ptr = NULL;
+  char *end = dest + total;
 
-    ptr = stecpy(string, tag_open, end);
-    ptr = stecpy(ptr, tag, end);
+  ptr = stecpy(dest, tag_open, end);
+  ptr = stecpy(ptr, tag, end);
+
+  if (alen > 0) {
     ptr = stecpy(ptr, space, end);
     ptr = stecpy(ptr, attrs, end);
-    ptr = stecpy(ptr, tag_close, end);
-
-    free(attrs);
-
-    return string;
   }
+
+  ptr = stecpy(ptr, tag_close, end);
+
+  return dest;
 }
 
 /*
