@@ -72,4 +72,34 @@ describe Berns::Builder do
 
     assert_equal '&lt;h1&gt;And &amp; this', dom.call
   end
+
+  it 'has the element method' do
+    dom = Berns::Builder.new do
+      element('div', class: 'some-div') do
+        text 'Content!'
+      end
+    end
+
+    assert_equal '<div class="some-div">Content!</div>', dom.call
+
+    dom = Berns::Builder.new do
+      element('div')
+    end
+
+    assert_equal '<div></div>', dom.call
+  end
+
+  it 'has the void method' do
+    dom = Berns::Builder.new do
+      void('br', class: 'break')
+    end
+
+    assert_equal '<br class="break">', dom.call
+
+    dom = Berns::Builder.new do
+      void('br')
+    end
+
+    assert_equal '<br>', dom.call
+  end
 end
