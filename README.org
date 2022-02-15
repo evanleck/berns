@@ -122,11 +122,11 @@ template = Berns::Builder.new do
 end
 #+end_src
 
-Within the block provided to =Berns::Builder.new= every standard and void
-element is available as a method and each time you use one of those methods the
-result is appended to an internal buffer. In addition, the =#text= method can be
-used to append a plain text string to the buffer and that text will be HTML
-escaped, so it's good for untrusted content.
+Within the block provided to =Berns::Builder.new= every standard element method,
+void element method, =#element=, and =#void= are available as methods and each
+time you use one of those methods the result is appended to an internal buffer.
+In addition, the =#text= method can be used to append a plain text string to the
+buffer and that text will be HTML escaped, so it's good for untrusted content.
 
 Once initialized, rendering the template to a string can be done with the
 =#call= method and any arguments, positional or keyword, will be passed through

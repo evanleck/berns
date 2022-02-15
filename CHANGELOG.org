@@ -1,5 +1,9 @@
 * Berns changelog
 
+** 3.5.0
+
+Add the =#element= and =#void= methods to blocks evaluated by =Berns::Builder=.
+
 ** 3.4.0
 
 Add the =Berns::Builder= class, enabling simpler template composition.
