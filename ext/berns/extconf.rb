@@ -9,5 +9,6 @@ append_cflags '-Wstrict-overflow'
 append_cflags '-flto'
 append_cflags '-fno-strict-aliasing'
 append_cflags '-msse4'
+append_cflags '-std=c99'
 
 create_makefile 'berns/berns'
