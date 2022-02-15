@@ -135,8 +135,14 @@ describe Berns do
       assert_equal '<br>', Berns.void(:br)
     end
 
+    it 'generates void elements with empty attributes' do
+      assert_equal '<br>', Berns.void(:br, {})
+    end
+
     it 'generates void elements with attributes' do
+      assert_equal '<br this="tag">', Berns.void('br', 'this' => 'tag')
       assert_equal '<br this="tag" should="work">', Berns.void('br', 'this' => 'tag', 'should' => 'work')
+      assert_equal '<br this="tag">', Berns.void('br', this: 'tag')
       assert_equal '<br this="tag" should="work">', Berns.void('br', this: 'tag', should: 'work')
       assert_equal '<br this="tag" should="work" data-foo="bar" data-bar-baz="foo">', Berns.void('br', this: 'tag', should: 'work', data: { foo: 'bar', bar: { baz: 'foo' } })
     end
@@ -162,6 +168,13 @@ describe Berns do
     it 'creates empty standard elements' do
       assert_equal '<div></div>', Berns.element('div')
       assert_equal '<div></div>', Berns.element(:div)
+    end
+
+    it 'creates empty standard elements with attributes' do
+      assert_equal '<div></div>', Berns.element('div', {})
+      assert_equal '<div></div>', Berns.element(:div, {})
+      assert_equal '<div one="One"></div>', Berns.element('div', { one: 'One' })
+      assert_equal '<div one="One" two="Two"></div>', Berns.element('div', { one: 'One', two: 'Two' })
     end
 
     it 'creates standard elements with a block of content' do
