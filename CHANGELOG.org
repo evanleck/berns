@@ -36,7 +36,7 @@ This has two advantages over the previous approach:
 
 1. There's no need to build the string as you go. Any =Berns= standard or void
    element method will automatically append to an internal buffer.
-2. There's less repitition since you don't need to add =Berns= in front of each
+2. There's less repetition since you don't need to add =Berns= in front of each
    element method call.
 
 This new class is heavily inspired by the likes of [[https://github.com/digital-fabric/papercraft][Papercraft]], [[https://github.com/markaby/markaby][Markaby]], and
