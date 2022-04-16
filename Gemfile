@@ -1,5 +1,14 @@
 # frozen_string_literal: true
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in berns.gemspec
 gemspec
+
+gem 'benchmark-ips', '~> 2'
+gem 'minitest', '~> 5'
+gem 'rake', '~> 13'
+gem 'rake-compiler', '~> 1'
+gem 'rubocop', '~> 1'
+gem 'rubocop-minitest'
+gem 'rubocop-packaging'
+gem 'rubocop-performance'
+gem 'rubocop-rake'
