@@ -36,6 +36,13 @@ describe Berns::Builder do
     assert_raises(ArgumentError) do
       dom.call
     end
+
+    dom = Berns::Builder.new do |pos, pos2|
+      h1 { pos }
+      p { pos2 }
+    end
+
+    assert_equal %(<h1>TITLE!</h1><p>PARAGRAPH!</p>), dom.call('TITLE!', 'PARAGRAPH!')
   end
 
   it 'has access to the scope around where it was initialized' do
