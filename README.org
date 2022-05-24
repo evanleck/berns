@@ -168,6 +168,24 @@ end # =>
 # </p>
 #+end_src
 
+Lastly, the block provided to =Berns::Builder.new= can take both positional and
+keyword arguments.
+
+#+begin_src ruby
+template = Berns::Builder.new do |content, title:|
+  h1 { title }
+  p(class: 'paragraph') { content }
+end
+
+template.call('Some text.', title: 'The title') # =>
+# <h1>
+#   The title
+# </h1>
+# <p>
+#   Some text.
+# </p>
+#+end_src
+
 *** Standard and void elements
 
 All standard and void HTML elements are defined as methods on Berns, so you can
