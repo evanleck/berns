@@ -1,5 +1,9 @@
 name: Berns
 
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 on: [push, pull_request]
 
 jobs:
