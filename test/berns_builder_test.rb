@@ -43,6 +43,13 @@ describe Berns::Builder do
     end
 
     assert_equal %(<h1>TITLE!</h1><p>PARAGRAPH!</p>), dom.call('TITLE!', 'PARAGRAPH!')
+
+    dom = Berns::Builder.new do |pos, title:|
+      h1 { title }
+      p { pos }
+    end
+
+    assert_equal %(<h1>TITLE!</h1><p>PARAGRAPH!</p>), dom.call('PARAGRAPH!', title: 'TITLE!')
   end
 
   it 'has access to the scope around where it was initialized' do
