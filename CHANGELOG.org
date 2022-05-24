@@ -1,5 +1,10 @@
 * Berns changelog
 
+** 4.0.0
+
+No code changes were made, but the required Ruby version has been increased to
+>= 2.7.0 in keeping with [[https://www.ruby-lang.org/en/downloads/branches/][2.6's recent end-of-life]].
+
 ** 3.5.0
 
 Add the =#element= and =#void= methods to blocks evaluated by =Berns::Builder=.
