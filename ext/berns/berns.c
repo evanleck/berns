@@ -1,26 +1,14 @@
-#include "ruby.h"
 #include "hescape.h"
+#include "ruby.h"
+#include "sds.h"
 
 static const char *attr_close = "\"";
-static const size_t attr_clen = 1;
-
 static const char *attr_equals = "=\"";
-static const size_t attr_eqlen = 2;
-
 static const char *dash = "-";
-static const size_t dlen = 1;
-
 static const char *space = " ";
-static const size_t splen = 1;
-
 static const char *tag_open = "<";
-static const size_t tag_olen = 1;
-
 static const char *tag_close = ">";
-static const size_t tag_clen = 1;
-
 static const char *slash = "/";
-static const size_t sllen = 1;
 
 
 /*
@@ -45,14 +33,13 @@ static const size_t sllen = 1;
 /*
  * Macro to define a "dynamic" function that generates a void element.
  */
-#define VOID_ELEMENT(element_name) \
+#define VOID_ELEMENT(element_name, length) \
   static VALUE external_##element_name##_element(int argc, VALUE *argv, RB_UNUSED_VAR(VALUE self)) { \
     rb_check_arity(argc, 0, 1); \
     \
-    const char *tag = #element_name; \
-    char *string = void_element(tag, strlen(tag), argv[0]); \
+    sds string = void_element(#element_name, length, argv[0]); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
-    free(string); \
+    sdsfree(string); \
     \
     return rstring; \
   }
@@ -60,38 +47,18 @@ static const size_t sllen = 1;
 /*
  * Macro to define a "dynamic" function that generates a standard element.
  */
-#define STANDARD_ELEMENT(element_name) \
+#define STANDARD_ELEMENT(element_name, length) \
   static VALUE external_##element_name##_element(int argc, VALUE *argv, RB_UNUSED_VAR(VALUE self)) { \
     rb_check_arity(argc, 0, 1); \
     \
     CONTENT_FROM_BLOCK \
-    const char *tag = #element_name; \
-    char *string = element(tag, strlen(tag), RSTRING_PTR(content), RSTRING_LEN(content), argv[0]); \
+    sds string = element(#element_name, length, RSTRING_PTR(content), RSTRING_LEN(content), argv[0]); \
     VALUE rstring = rb_utf8_str_new_cstr(string); \
-    free(string); \
+    sdsfree(string); \
     \
     return rstring; \
   }
 
-
-/*
- * "Safe strcpy" - https://twitter.com/hyc_symas/status/1102573036534972416?s=12
-*/
-static char * stecpy(char *destination, const char *source, const char *end) {
-  if (end) {
-    end--;
-  }
-
-  while (*source && destination < end) {
-    *destination++ = *source++;
-  }
-
-  if (destination) {
-    *destination = '\0';
-  }
-
-  return destination;
-}
 
 /*
  * The external API for Berns.sanitize
@@ -171,65 +138,39 @@ static VALUE external_escape_html(RB_UNUSED_VAR(VALUE self), VALUE string) {
 }
 
 /*
- * Return a freeable piece of memory with a copy of the attribute passed in it.
- * Why does this exist? So we can free the memory created by this without having
- * branch further in other places.
- */
-static char * empty_value_to_attribute(const char *attr, const size_t attrlen) {
-  size_t total_size = attrlen + 1;
-  char *dest = malloc(total_size);
-  char *end = dest + total_size;
-
-  stecpy(dest, attr, end);
-
-  return dest;
-}
-
-/*
  * Takes a string attribute name and value pair and converts them into a string ready to use in HTML
  *
  *   "class" + "bg-primary" => 'class="bg-primary"'
 */
-static char * string_value_to_attribute(const char *attr, const size_t attrlen, const char *value, const size_t vallen) {
+static sds string_value_to_attribute(const sds attr, const char *value, const size_t vallen) {
   if (vallen == 0) {
-    size_t total_size = attrlen + 1;
-    char *dest = malloc(total_size);
-    char *end = dest + total_size;
-
-    stecpy(dest, attr, end);
-
-    return dest;
+    return sdsdup(attr);
   } else {
     uint8_t *edest = NULL;
     size_t esclen = hesc_escape_html(&edest, value, vallen);
 
-    size_t total_size = attrlen + attr_eqlen + esclen + attr_clen + 1;
-    char *dest = malloc(total_size);
-    char *ptr = NULL;
-    char *end = dest + total_size;
-
-    ptr = stecpy(dest, attr, end);
-    ptr = stecpy(ptr, attr_equals, end);
-    ptr = stecpy(ptr, edest, end);
-    ptr = stecpy(ptr, attr_close, end);
+    sds string = sdsdup(attr);
+    string = sdscat(string, attr_equals);
+    string = sdscat(string, edest);
+    string = sdscat(string, attr_close);
 
     if (esclen > vallen) {
       free(edest);
     }
 
-    return dest;
+    return string;
   }
 }
 
-static char * hash_value_to_attribute(const char *attr, const size_t attrlen, VALUE value) {
+static sds hash_value_to_attribute(const sds attr, VALUE value) {
   if (TYPE(value) == T_IMEMO) {
-    return strdup("");
+    return sdsempty();
   }
 
   Check_Type(value, T_HASH);
 
   if (RHASH_SIZE(value) == 0) {
-    return strdup("");
+    return sdsempty();
   }
 
   VALUE subkey;
@@ -238,12 +179,8 @@ static char * hash_value_to_attribute(const char *attr, const size_t attrlen, VA
   const VALUE keys = rb_funcall(value, rb_intern("keys"), 0);
   const VALUE length = RARRAY_LEN(keys);
 
-  size_t allocated = 256;
-  size_t occupied = 0;
-
-  char *destination = malloc(allocated);
-  char *position = destination;
-  char *end = destination + allocated;
+  sds destination = sdsempty();
+  size_t attrlen = sdslen(attr);
 
   for (unsigned int i = 0; i < length; i++) {
     subkey = rb_ary_entry(keys, i);
@@ -259,102 +196,64 @@ static char * hash_value_to_attribute(const char *attr, const size_t attrlen, VA
         subkey = rb_sym2str(subkey);
         break;
       default:
-        free(destination);
+        sdsfree(destination);
         rb_raise(rb_eTypeError, "Berns.to_attribute value keys must be Strings, Symbols, or nil.");
         break;
     }
 
-    size_t subattr_len = attrlen;
+    sds subattr = sdsempty();
     size_t subkey_len = RSTRING_LEN(subkey);
 
-    if (attrlen > 0 && subkey_len > 0) {
-      subattr_len += dlen;
-    }
-
-    if (subkey_len > 0) {
-      subattr_len += subkey_len;
-    }
-
-    char subattr[subattr_len + 1];
-    char *ptr = subattr;
-    char *subend = subattr + subattr_len + 1;
-
     if (attrlen > 0) {
-      ptr = stecpy(ptr, attr, subend);
+      subattr = sdscat(subattr, attr);
     }
 
     if (attrlen > 0 && subkey_len > 0) {
-      ptr = stecpy(ptr, dash, subend);
+      subattr = sdscat(subattr, dash);
     }
 
-    stecpy(ptr, RSTRING_PTR(subkey), subend);
+    subattr = sdscat(subattr, RSTRING_PTR(subkey));
 
-    char *combined;
+    /* char *combined; */
+    sds combined = sdsempty();
 
     switch(TYPE(subvalue)) {
       case T_FALSE:
-        combined = strdup("");
         break;
 
       case T_NIL:
         /* Fall through. */
       case T_TRUE:
-        combined = empty_value_to_attribute(subattr, subattr_len);
+        combined = sdsdup(subattr);
         break;
 
       case T_STRING:
-        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
+        combined = string_value_to_attribute(subattr, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
 
       case T_SYMBOL:
         subvalue = rb_sym2str(subvalue);
-        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
+        combined = string_value_to_attribute(subattr, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
 
       case T_HASH:
-        combined = hash_value_to_attribute(subattr, subattr_len, subvalue);
+        combined = hash_value_to_attribute(subattr, subvalue);
         break;
 
       default:
         subvalue = rb_funcall(subvalue, rb_intern("to_s"), 0);
-        combined = string_value_to_attribute(subattr, subattr_len, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
+        combined = string_value_to_attribute(subattr, RSTRING_PTR(subvalue), RSTRING_LEN(subvalue));
         break;
     }
 
-    size_t combined_len = strlen(combined);
-    size_t size_to_append = combined_len + 1;
-
     if (i > 0) {
-      size_to_append += splen;
+      destination = sdscat(destination, space);
     }
 
-    if ((size_to_append + occupied) > allocated) {
-      /* To avoid an abundance of reallocations, this is a multiple of 256. */
-      double multiple = (double) (size_to_append + occupied) / 256;
-      size_t new_size_to_allocate = (unsigned int) ceil(multiple) * 256;
+    destination = sdscat(destination, combined);
 
-      char *tmp = realloc(destination, new_size_to_allocate);
-
-      if (tmp == NULL) {
-        free(destination);
-        rb_raise(rb_eNoMemError, "Berns could not allocate sufficient memory.");
-      }
-
-      allocated = new_size_to_allocate;
-      destination = tmp;
-      position = destination + occupied;
-      end = destination + allocated;
-    }
-
-    if (i > 0) {
-      position = stecpy(position, space, end);
-      occupied += splen;
-    }
-
-    position = stecpy(position, combined, end);
-    occupied += combined_len;
-
-    free(combined);
+    sdsfree(subattr);
+    sdsfree(combined);
   }
 
   return destination;
@@ -363,7 +262,7 @@ static char * hash_value_to_attribute(const char *attr, const size_t attrlen, VA
 /*
  * Convert an attribute name and value into a string.
  */
-static char * to_attribute(VALUE attr, VALUE value) {
+static sds to_attribute(VALUE attr, VALUE value) {
   switch(TYPE(attr)) {
     case T_SYMBOL:
       attr = rb_sym2str(attr);
@@ -374,33 +273,37 @@ static char * to_attribute(VALUE attr, VALUE value) {
 
   StringValue(attr);
 
-  char *val = NULL;
+  sds val = sdsempty();
+  sds atr = sdsnewlen(RSTRING_PTR(attr), RSTRING_LEN(attr));
+
   VALUE str;
 
   switch(TYPE(value)) {
     case T_NIL:
       /* Fall through. */
     case T_TRUE:
-      val = empty_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr));
+      val = sdsdup(atr);
       break;
     case T_FALSE:
-      val = strdup("");
+      /* sdsempty() */
       break;
     case T_HASH:
-      val = hash_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), value);
+      val = hash_value_to_attribute(atr, value);
       break;
     case T_STRING:
-      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(value), RSTRING_LEN(value));
+      val = string_value_to_attribute(atr, RSTRING_PTR(value), RSTRING_LEN(value));
       break;
     case T_SYMBOL:
       str = rb_sym2str(value);
-      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(str), RSTRING_LEN(str));
+      val = string_value_to_attribute(atr, RSTRING_PTR(str), RSTRING_LEN(str));
       break;
     default:
       str = rb_funcall(value, rb_intern("to_s"), 0);
-      val = string_value_to_attribute(RSTRING_PTR(attr), RSTRING_LEN(attr), RSTRING_PTR(str), RSTRING_LEN(str));
+      val = string_value_to_attribute(atr, RSTRING_PTR(str), RSTRING_LEN(str));
       break;
   }
+
+  sdsfree(atr);
 
   return val;
 }
@@ -423,9 +326,9 @@ static VALUE external_to_attribute(RB_UNUSED_VAR(VALUE self), VALUE attr, VALUE 
 
   StringValue(attr);
 
-  char *val = to_attribute(attr, value);
+  sds val = to_attribute(attr, value);
   VALUE rstring = rb_utf8_str_new_cstr(val);
-  free(val);
+  sdsfree(val);
 
   return rstring;
 }
@@ -443,42 +346,35 @@ static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes)
     return rb_utf8_str_new_cstr("");
   }
 
-  const char *empty = "";
-  char *attrs = hash_value_to_attribute(empty, 0, attributes);
+  sds empty = sdsempty();
+  sds attrs = hash_value_to_attribute(empty, attributes);
+  sdsfree(empty);
 
   VALUE rstring = rb_utf8_str_new_cstr(attrs);
-  free(attrs);
+  sdsfree(attrs);
 
   return rstring;
 }
 
-static char * void_element(const char *tag, size_t tlen, VALUE attributes) {
-  const char *empty = "";
-  char *attrs = hash_value_to_attribute(empty, 0, attributes);
-  size_t alen = strlen(attrs);
+static sds void_element(const char *tag, size_t tlen, VALUE attributes) {
+  sds empty = sdsempty();
+  sds attrs = hash_value_to_attribute(empty, attributes);
+  sdsfree(empty);
+  size_t alen = sdslen(attrs);
 
-  size_t total = tag_olen + tlen + tag_clen + 1;
-
-  /* If we have some attributes, add a space and the attributes' length. */
-  if (alen > 0) {
-    total += splen + alen;
-  }
-
-  char *dest = malloc(total);
-  char *ptr = NULL;
-  char *end = dest + total;
-
-  ptr = stecpy(dest, tag_open, end);
-  ptr = stecpy(ptr, tag, end);
+  sds elm = sdsnew(tag_open);
+  elm = sdscat(elm, tag);
 
   if (alen > 0) {
-    ptr = stecpy(ptr, space, end);
-    ptr = stecpy(ptr, attrs, end);
+    elm = sdscat(elm, space);
+    elm = sdscat(elm, attrs);
   }
 
-  ptr = stecpy(ptr, tag_close, end);
+  sdsfree(attrs);
 
-  return dest;
+  elm = sdscat(elm, tag_close);
+
+  return elm;
 }
 
 /*
@@ -500,55 +396,39 @@ static VALUE external_void_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VAL
 
   StringValue(tag);
 
-  char *string = void_element(RSTRING_PTR(tag), RSTRING_LEN(tag), attributes);
+  sds string = void_element(RSTRING_PTR(tag), RSTRING_LEN(tag), attributes);
   VALUE rstring = rb_utf8_str_new_cstr(string);
-
-  free(string);
+  sdsfree(string);
 
   return rstring;
 }
 
-static char * element(const char *tag, size_t tlen, char *content, size_t conlen, VALUE attributes) {
-  const char *empty = "";
-  char *attrs = hash_value_to_attribute(empty, 0, attributes);
-  size_t alen = strlen(attrs);
+static sds element(const char *tag, size_t tlen, char *content, size_t conlen, VALUE attributes) {
+  sds empty = sdsempty();
+  sds attrs = hash_value_to_attribute(empty, attributes);
+  sdsfree(empty);
+  size_t alen = sdslen(attrs);
 
-  size_t total = tag_olen + tlen + tag_clen + tag_olen + sllen + tlen + tag_clen + 1;
-
-  /* If we have some attributes, add a space and the attributes' length. */
-  if (alen > 0) {
-    total += splen + alen;
-  }
-
-  /* If we have some content, add the content length to our total. */
-  if (conlen > 0) {
-    total += conlen;
-  }
-
-  char *dest = malloc(total);
-  char *ptr = NULL;
-  char *end = dest + total;
-
-  ptr = stecpy(dest, tag_open, end);
-  ptr = stecpy(ptr, tag, end);
+  sds dest = sdsnew(tag_open);
+  dest = sdscat(dest, tag);
 
   if (alen > 0) {
-    ptr = stecpy(ptr, space, end);
-    ptr = stecpy(ptr, attrs, end);
+    dest = sdscat(dest, space);
+    dest = sdscat(dest, attrs);
   }
 
-  ptr = stecpy(ptr, tag_close, end);
+  dest = sdscat(dest, tag_close);
 
   if (conlen > 0) {
-    ptr = stecpy(ptr, content, end);
+    dest = sdscat(dest, content);
   }
 
-  ptr = stecpy(ptr, tag_open, end);
-  ptr = stecpy(ptr, slash, end);
-  ptr = stecpy(ptr, tag, end);
-  ptr = stecpy(ptr, tag_close, end);
+  dest = sdscat(dest, tag_open);
+  dest = sdscat(dest, slash);
+  dest = sdscat(dest, tag);
+  dest = sdscat(dest, tag_close);
 
-  free(attrs);
+  sdsfree(attrs);
 
   return dest;
 }
@@ -575,123 +455,123 @@ static VALUE external_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VALUE se
 
   CONTENT_FROM_BLOCK
 
-  char *string = element(RSTRING_PTR(tag), RSTRING_LEN(tag), RSTRING_PTR(content), RSTRING_LEN(content), attributes);
+  sds string = element(RSTRING_PTR(tag), RSTRING_LEN(tag), RSTRING_PTR(content), RSTRING_LEN(content), attributes);
   VALUE rstring = rb_utf8_str_new_cstr(string);
-  free(string);
+  sdsfree(string);
 
   return rstring;
 }
 
-VOID_ELEMENT(area)
-VOID_ELEMENT(base)
-VOID_ELEMENT(br)
-VOID_ELEMENT(col)
-VOID_ELEMENT(embed)
-VOID_ELEMENT(hr)
-VOID_ELEMENT(img)
-VOID_ELEMENT(input)
-VOID_ELEMENT(link)
-VOID_ELEMENT(menuitem)
-VOID_ELEMENT(meta)
-VOID_ELEMENT(param)
-VOID_ELEMENT(source)
-VOID_ELEMENT(track)
-VOID_ELEMENT(wbr)
+VOID_ELEMENT(area, 4)
+VOID_ELEMENT(base, 4)
+VOID_ELEMENT(br, 2)
+VOID_ELEMENT(col, 3)
+VOID_ELEMENT(embed, 5)
+VOID_ELEMENT(hr, 2)
+VOID_ELEMENT(img, 3)
+VOID_ELEMENT(input, 5)
+VOID_ELEMENT(link, 4)
+VOID_ELEMENT(menuitem, 8)
+VOID_ELEMENT(meta, 4)
+VOID_ELEMENT(param, 5)
+VOID_ELEMENT(source, 6)
+VOID_ELEMENT(track, 5)
+VOID_ELEMENT(wbr, 3)
 
-STANDARD_ELEMENT(a)
-STANDARD_ELEMENT(abbr)
-STANDARD_ELEMENT(address)
-STANDARD_ELEMENT(article)
-STANDARD_ELEMENT(aside)
-STANDARD_ELEMENT(audio)
-STANDARD_ELEMENT(b)
-STANDARD_ELEMENT(bdi)
-STANDARD_ELEMENT(bdo)
-STANDARD_ELEMENT(blockquote)
-STANDARD_ELEMENT(body)
-STANDARD_ELEMENT(button)
-STANDARD_ELEMENT(canvas)
-STANDARD_ELEMENT(caption)
-STANDARD_ELEMENT(cite)
-STANDARD_ELEMENT(code)
-STANDARD_ELEMENT(colgroup)
-STANDARD_ELEMENT(datalist)
-STANDARD_ELEMENT(dd)
-STANDARD_ELEMENT(del)
-STANDARD_ELEMENT(details)
-STANDARD_ELEMENT(dfn)
-STANDARD_ELEMENT(dialog)
-STANDARD_ELEMENT(div)
-STANDARD_ELEMENT(dl)
-STANDARD_ELEMENT(dt)
-STANDARD_ELEMENT(em)
-STANDARD_ELEMENT(fieldset)
-STANDARD_ELEMENT(figcaption)
-STANDARD_ELEMENT(figure)
-STANDARD_ELEMENT(footer)
-STANDARD_ELEMENT(form)
-STANDARD_ELEMENT(h1)
-STANDARD_ELEMENT(h2)
-STANDARD_ELEMENT(h3)
-STANDARD_ELEMENT(h4)
-STANDARD_ELEMENT(h5)
-STANDARD_ELEMENT(h6)
-STANDARD_ELEMENT(head)
-STANDARD_ELEMENT(header)
-STANDARD_ELEMENT(html)
-STANDARD_ELEMENT(i)
-STANDARD_ELEMENT(iframe)
-STANDARD_ELEMENT(ins)
-STANDARD_ELEMENT(kbd)
-STANDARD_ELEMENT(label)
-STANDARD_ELEMENT(legend)
-STANDARD_ELEMENT(li)
-STANDARD_ELEMENT(main)
-STANDARD_ELEMENT(map)
-STANDARD_ELEMENT(mark)
-STANDARD_ELEMENT(menu)
-STANDARD_ELEMENT(meter)
-STANDARD_ELEMENT(nav)
-STANDARD_ELEMENT(noscript)
-STANDARD_ELEMENT(object)
-STANDARD_ELEMENT(ol)
-STANDARD_ELEMENT(optgroup)
-STANDARD_ELEMENT(option)
-STANDARD_ELEMENT(output)
-STANDARD_ELEMENT(p)
-STANDARD_ELEMENT(picture)
-STANDARD_ELEMENT(pre)
-STANDARD_ELEMENT(progress)
-STANDARD_ELEMENT(q)
-STANDARD_ELEMENT(rp)
-STANDARD_ELEMENT(rt)
-STANDARD_ELEMENT(ruby)
-STANDARD_ELEMENT(s)
-STANDARD_ELEMENT(samp)
-STANDARD_ELEMENT(script)
-STANDARD_ELEMENT(section)
-STANDARD_ELEMENT(select)
-STANDARD_ELEMENT(small)
-STANDARD_ELEMENT(span)
-STANDARD_ELEMENT(strong)
-STANDARD_ELEMENT(style)
-STANDARD_ELEMENT(sub)
-STANDARD_ELEMENT(summary)
-STANDARD_ELEMENT(table)
-STANDARD_ELEMENT(tbody)
-STANDARD_ELEMENT(td)
-STANDARD_ELEMENT(template)
-STANDARD_ELEMENT(textarea)
-STANDARD_ELEMENT(tfoot)
-STANDARD_ELEMENT(th)
-STANDARD_ELEMENT(thead)
-STANDARD_ELEMENT(time)
-STANDARD_ELEMENT(title)
-STANDARD_ELEMENT(tr)
-STANDARD_ELEMENT(u)
-STANDARD_ELEMENT(ul)
-STANDARD_ELEMENT(var)
-STANDARD_ELEMENT(video)
+STANDARD_ELEMENT(a, 1)
+STANDARD_ELEMENT(abbr, 4)
+STANDARD_ELEMENT(address, 7)
+STANDARD_ELEMENT(article, 7)
+STANDARD_ELEMENT(aside, 5)
+STANDARD_ELEMENT(audio, 5)
+STANDARD_ELEMENT(b, 1)
+STANDARD_ELEMENT(bdi, 3)
+STANDARD_ELEMENT(bdo, 3)
+STANDARD_ELEMENT(blockquote, 10)
+STANDARD_ELEMENT(body, 4)
+STANDARD_ELEMENT(button, 6)
+STANDARD_ELEMENT(canvas, 6)
+STANDARD_ELEMENT(caption, 7)
+STANDARD_ELEMENT(cite, 4)
+STANDARD_ELEMENT(code, 4)
+STANDARD_ELEMENT(colgroup, 8)
+STANDARD_ELEMENT(datalist, 8)
+STANDARD_ELEMENT(dd, 2)
+STANDARD_ELEMENT(del, 3)
+STANDARD_ELEMENT(details, 7)
+STANDARD_ELEMENT(dfn, 3)
+STANDARD_ELEMENT(dialog, 6)
+STANDARD_ELEMENT(div, 3)
+STANDARD_ELEMENT(dl, 2)
+STANDARD_ELEMENT(dt, 2)
+STANDARD_ELEMENT(em, 2)
+STANDARD_ELEMENT(fieldset, 8)
+STANDARD_ELEMENT(figcaption, 10)
+STANDARD_ELEMENT(figure, 6)
+STANDARD_ELEMENT(footer, 6)
+STANDARD_ELEMENT(form, 4)
+STANDARD_ELEMENT(h1, 2)
+STANDARD_ELEMENT(h2, 2)
+STANDARD_ELEMENT(h3, 2)
+STANDARD_ELEMENT(h4, 2)
+STANDARD_ELEMENT(h5, 2)
+STANDARD_ELEMENT(h6, 2)
+STANDARD_ELEMENT(head, 4)
+STANDARD_ELEMENT(header, 6)
+STANDARD_ELEMENT(html, 4)
+STANDARD_ELEMENT(i, 1)
+STANDARD_ELEMENT(iframe, 6)
+STANDARD_ELEMENT(ins, 3)
+STANDARD_ELEMENT(kbd, 3)
+STANDARD_ELEMENT(label, 5)
+STANDARD_ELEMENT(legend, 6)
+STANDARD_ELEMENT(li, 2)
+STANDARD_ELEMENT(main, 4)
+STANDARD_ELEMENT(map, 3)
+STANDARD_ELEMENT(mark, 4)
+STANDARD_ELEMENT(menu, 4)
+STANDARD_ELEMENT(meter, 5)
+STANDARD_ELEMENT(nav, 3)
+STANDARD_ELEMENT(noscript, 8)
+STANDARD_ELEMENT(object, 6)
+STANDARD_ELEMENT(ol, 2)
+STANDARD_ELEMENT(optgroup, 8)
+STANDARD_ELEMENT(option, 6)
+STANDARD_ELEMENT(output, 6)
+STANDARD_ELEMENT(p, 1)
+STANDARD_ELEMENT(picture, 7)
+STANDARD_ELEMENT(pre, 3)
+STANDARD_ELEMENT(progress, 8)
+STANDARD_ELEMENT(q, 1)
+STANDARD_ELEMENT(rp, 2)
+STANDARD_ELEMENT(rt, 2)
+STANDARD_ELEMENT(ruby, 4)
+STANDARD_ELEMENT(s, 1)
+STANDARD_ELEMENT(samp, 4)
+STANDARD_ELEMENT(script, 6)
+STANDARD_ELEMENT(section, 7)
+STANDARD_ELEMENT(select, 6)
+STANDARD_ELEMENT(small, 5)
+STANDARD_ELEMENT(span, 4)
+STANDARD_ELEMENT(strong, 6)
+STANDARD_ELEMENT(style, 5)
+STANDARD_ELEMENT(sub, 3)
+STANDARD_ELEMENT(summary, 7)
+STANDARD_ELEMENT(table, 5)
+STANDARD_ELEMENT(tbody, 5)
+STANDARD_ELEMENT(td, 2)
+STANDARD_ELEMENT(template, 8)
+STANDARD_ELEMENT(textarea, 8)
+STANDARD_ELEMENT(tfoot, 5)
+STANDARD_ELEMENT(th, 2)
+STANDARD_ELEMENT(thead, 5)
+STANDARD_ELEMENT(time, 4)
+STANDARD_ELEMENT(title, 5)
+STANDARD_ELEMENT(tr, 2)
+STANDARD_ELEMENT(u, 1)
+STANDARD_ELEMENT(ul, 2)
+STANDARD_ELEMENT(var, 3)
+STANDARD_ELEMENT(video, 5)
 
 void Init_berns() {
   VALUE Berns = rb_define_module("Berns");

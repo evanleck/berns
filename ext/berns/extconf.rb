@@ -4,6 +4,7 @@ require 'mkmf'
 dir_config 'berns'
 
 append_cflags '-O3'
+append_cflags '-Wno-pointer-sign'
 append_cflags '-Wshadow'
 append_cflags '-Wstrict-overflow'
 append_cflags '-flto'
