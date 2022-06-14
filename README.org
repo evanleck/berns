@@ -125,12 +125,30 @@ end
 Within the block provided to =Berns::Builder.new= every standard element method,
 void element method, =#element=, and =#void= are available as methods and each
 time you use one of those methods the result is appended to an internal buffer.
-In addition, the =#text= method can be used to append a plain text string to the
-buffer and that text will be HTML escaped, so it's good for untrusted content.
+In addition, the =#text= method appends HTML escaped text to the buffer and
+=#raw= appends text to the buffer without modification.
 
-Once initialized, rendering the template to a string can be done with the
-=#call= method and any arguments, positional or keyword, will be passed through
-as-is to the block provided to =#new=.
+The block provided to =Berns::Builder.new= can take both positional and keyword
+arguments.
+
+#+begin_src ruby
+template = Berns::Builder.new do |content, title:|
+  h1 { title }
+  p(class: 'paragraph') { content }
+end
+
+template.call('Some text.', title: 'The title') # =>
+# <h1>
+#   The title
+# </h1>
+# <p>
+#   Some text.
+# </p>
+#+end_src
+
+Once initialized, the =#call= method will render the template to a string. Any
+arguments, positional or keyword, are passed through as-is to the block provided
+to =#new=.
 
 #+begin_src ruby
 string = template.call # =>
@@ -168,23 +186,6 @@ end # =>
 # </p>
 #+end_src
 
-Lastly, the block provided to =Berns::Builder.new= can take both positional and
-keyword arguments.
-
-#+begin_src ruby
-template = Berns::Builder.new do |content, title:|
-  h1 { title }
-  p(class: 'paragraph') { content }
-end
-
-template.call('Some text.', title: 'The title') # =>
-# <h1>
-#   The title
-# </h1>
-# <p>
-#   Some text.
-# </p>
-#+end_src
 
 *** Standard and void elements
 

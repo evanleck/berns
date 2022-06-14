@@ -1,5 +1,10 @@
 * Berns changelog
 
+** 4.1.0
+
+Instances of the =Berns::Builder= class can now be =#call='ed multiple times,
+letting instances of =Berns::Builder= act like template objects.
+
 ** 4.0.0
 
 No code changes were made, but the required Ruby version has been increased to
