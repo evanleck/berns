@@ -215,20 +215,22 @@ area base br col embed hr img input link menuitem meta param source track wbr
 
 ** Performance
 
-Berns 3 is about three times faster than the pure Ruby implementation used in
-version 2. See the file [[file:benchmarks/performance.rb][benchmarks/performance.rb]] for the benchmark code.
+Berns 3 was a total rewrite from a pure Ruby implementation to one powered by a
+C extension. That rewrite is about three times faster than the pure Ruby
+implementation used in version 2. See the file [[file:benchmarks/performance.rb][benchmarks/performance.rb]] for the
+benchmark code.
 
 #+begin_example
 Warming up --------------------------------------
-             element    27.373k i/100ms
-               berns    94.118k i/100ms
+                ruby    27.521k i/100ms
+               c-ext    74.915k i/100ms
 Calculating -------------------------------------
-             element    314.078k (± 4.5%) i/s -      1.588M in   5.065539s
-               berns    935.528k (± 6.1%) i/s -      4.706M in   5.049718s
+                ruby    275.913k (± 1.0%) i/s -      1.404M in   5.087516s
+               c-ext    813.113k (± 1.0%) i/s -      4.120M in   5.067902s
 
 Comparison:
-               berns:   935527.9 i/s
-             element:   314078.4 i/s - 2.98x  (± 0.00) slower
+               c-ext:   813113.3 i/s
+                ruby:   275913.5 i/s - 2.95x  (± 0.00) slower
 #+end_example
 
 ** Trivia

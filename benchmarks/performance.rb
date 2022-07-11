@@ -52,8 +52,8 @@ end
 ATTRS = { class: 'class', data: { attr: 'value' } }.freeze
 
 Benchmark.ips do |x|
-  x.report('element') { element('p', ATTRS) { 'Content' } }
-  x.report('berns') { Berns.element('p', ATTRS) { 'Content' } }
+  x.report('ruby')  { element('p', ATTRS) { 'Content' } }
+  x.report('c-ext') { Berns.element('p', ATTRS) { 'Content' } }
 
   x.compare!
 end
