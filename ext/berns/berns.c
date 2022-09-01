@@ -357,7 +357,20 @@ static char * hash_value_to_attribute(const char *attr, const size_t attrlen, VA
     free(combined);
   }
 
-  return destination;
+  /*
+   * Reallocate destination to final size. This is generally a reduction in the
+   * allocated memory since we chunk allocations in 256 byte multiples.
+   */
+  char *rightsizeddest = realloc(destination, occupied + 1);
+
+  if (rightsizeddest == NULL) {
+    free(destination);
+    rb_raise(rb_eNoMemError, "Berns could not allocate sufficient memory.");
+  }
+
+  rightsizeddest[occupied] = '\0';
+
+  return rightsizeddest;
 }
 
 /*
