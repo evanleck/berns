@@ -16,9 +16,17 @@ Benchmark.ips do |x|
 end
 
 puts 'to_attributes'
+
+SIMPLE = { ryan: 'started the fire', itjust: 'started burning', hey: "the temp's still learning", this: 'is a super long key that will just keep going on and on and on', more: 'keys are required to trigger a realloc' }.freeze
+NESTED = { ryan: 'started the fire', itjust: { hey: "the temp's still learning", this: 'is a super long key that will just keep going on and on and on', more: 'keys are required to trigger a realloc' } }.freeze
+HUGE = (0..256).each_with_object({}) do |count, attrs|
+  attrs["data-#{ count }"] = "This is data attribute number #{ count }"
+end.freeze
+
 Benchmark.ips do |x|
-  x.report('simple') { Berns.to_attributes({ ryan: 'started the fire', itjust: 'started burning', hey: "the temp's still learning", this: 'is a super long key that will just keep going on and on and on', more: 'keys are required to trigger a realloc' }) }
-  x.report('nested') { Berns.to_attributes({ ryan: 'started the fire', itjust: { hey: "the temp's still learning", this: 'is a super long key that will just keep going on and on and on', more: 'keys are required to trigger a realloc' } }) }
+  x.report('simple') { Berns.to_attributes(SIMPLE) }
+  x.report('nested') { Berns.to_attributes(NESTED) }
+  x.report('huge') { Berns.to_attributes(HUGE) }
 
   x.compare!
 end
