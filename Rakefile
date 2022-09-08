@@ -18,5 +18,7 @@ Rake::TestTask.new(:test) do |task|
   task.test_files = FileList['test/**/*_test.rb']
 end
 
+desc 'Clean, compile, test, and lint.'
 task suite: %i[clean compile test rubocop]
+
 task default: %i[test rubocop]
