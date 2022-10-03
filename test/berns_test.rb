@@ -31,6 +31,10 @@ describe Berns do
       assert_equal %(foo="[&quot;bar&quot;]"), Berns.to_attribute('foo', ['bar'])
     end
 
+    it 'does not rewrite underscores in attribute names' do
+      assert_equal %(data-foo_bar="baz"), Berns.to_attribute('data', 'foo_bar' => 'baz')
+    end
+
     it 'escapes the attribute content' do
       assert_equal %(foo="&lt;b&gt;bar&lt;/b&gt;-&quot;with &#39;quotes&#39;&quot;"), Berns.to_attribute('foo', %(<b>bar</b>-"with 'quotes'"))
     end
@@ -99,6 +103,9 @@ describe Berns do
     it 'converts a single hash into attributes' do
       assert_equal 'this="tag"', Berns.to_attributes(this: 'tag')
       assert_equal 'this="tag" should="work" data-foo="bar" data-bar-baz="foo"', Berns.to_attributes(this: 'tag', should: 'work', data: { foo: 'bar', bar: { baz: 'foo' } })
+
+      # This one makes sure *args and **kwargs is covered appropriately.
+      assert_equal 'this="tag" should="work" data-foo="bar" data-bar-baz="foo"', Berns.to_attributes('this' => 'tag', should: 'work', data: { 'foo' => 'bar', bar: { baz: 'foo' } })
     end
 
     it 'returns an empty string for empty attributes' do
