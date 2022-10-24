@@ -465,6 +465,9 @@ static VALUE external_to_attributes(RB_UNUSED_VAR(VALUE self), VALUE attributes)
   return rstring;
 }
 
+/*
+ * Create a void element i.e. one without children/content.
+ */
 static char * void_element(const char *tag, size_t tlen, VALUE attributes) {
   const char *empty = "";
   char *attrs = hash_value_to_attribute(empty, 0, attributes);
@@ -490,6 +493,8 @@ static char * void_element(const char *tag, size_t tlen, VALUE attributes) {
   }
 
   ptr = stecpy(ptr, tag_close, end);
+
+  free(attrs);
 
   return dest;
 }
