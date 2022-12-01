@@ -16,6 +16,7 @@ describe Berns do
 
     it 'handles string attributes' do
       big = 'You know what? It is beets. Ive crashed into a beet truck. Did he just throw my cat out of the window? Hey, take a look at the earthlings. Goodbye! God help us, were in the hands of engineers. My dad once told me, laugh and the world laughs with you, Cry, and Ill give you something to cry about you little bastard!'
+
       assert_equal %(nerf="guns"), Berns.to_attribute('nerf', 'guns')
       assert_equal %(nerf="#{ big }"), Berns.to_attribute('nerf', big)
     end

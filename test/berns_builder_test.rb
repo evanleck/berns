@@ -55,6 +55,7 @@ describe Berns::Builder do
   describe '#call' do
     it 'renders the template to a string' do
       dom = Berns::Builder.new { b { 'Bold!' } }
+
       assert_equal '<b>Bold!</b>', dom.call
     end
 
@@ -65,6 +66,7 @@ describe Berns::Builder do
       end
 
       assert_raises(ArgumentError) { dom.call }
+
       assert_equal %(<h1>TITLE!</h1><p>PARAGRAPH!</p>), dom.call(title: 'TITLE!', para: 'PARAGRAPH!')
     end
 
@@ -88,6 +90,7 @@ describe Berns::Builder do
       end
 
       assert_raises(ArgumentError) { dom.call }
+
       assert_equal %(<h1>TITLE!</h1><p>PARAGRAPH!</p>), dom.call('PARAGRAPH!', title: 'TITLE!')
     end
   end
@@ -95,6 +98,7 @@ describe Berns::Builder do
   describe '#to_s' do
     it 'renders the template to a string' do
       dom = Berns::Builder.new { b { 'Bold!' } }
+
       assert_equal '<b>Bold!</b>', dom.to_s
     end
   end
@@ -102,6 +106,7 @@ describe Berns::Builder do
   describe '#to_str' do
     it 'renders the template to a string' do
       dom = Berns::Builder.new { b { 'Bold!' } }
+
       assert_equal '<b>Bold!</b>', dom.to_str
     end
   end
