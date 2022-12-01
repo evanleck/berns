@@ -173,9 +173,9 @@ static VALUE external_escape_html(RB_UNUSED_VAR(VALUE self), VALUE string) {
 /*
  * Return a freeable piece of memory with a copy of the attribute passed in it.
  * Why does this exist? So we can free the memory created by this without having
- * branch further in other places.
+ * to branch further in other places.
  */
-static char * empty_value_to_attribute(const char *attr, const size_t attrlen) {
+static inline char * empty_value_to_attribute(const char *attr, const size_t attrlen) {
   size_t total_size = attrlen + 1;
   char *dest = malloc(total_size);
   char *end = dest + total_size;
