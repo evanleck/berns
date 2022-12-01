@@ -1,5 +1,9 @@
 * Berns changelog
 
+** 4.2.0
+
+Allow inlining =empty_value_to_attribute=.
+
 ** 4.1.2
 
 Fix a memory leak in =void_element=.
