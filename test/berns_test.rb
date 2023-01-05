@@ -5,7 +5,7 @@ require 'minitest/autorun'
 
 describe Berns do
   specify 'it has a version' do
-    refute_nil ::Berns::VERSION
+    refute_nil Berns::VERSION
   end
 
   describe '#to_attribute' do
