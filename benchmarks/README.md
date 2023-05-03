@@ -1,27 +1,30 @@
-* Benchmarks
+# Benchmarks
 
 These are contrived examples, but I've found it instructive to check results
-over time. The benchmarks can be run from the project directory with =ruby
-benchmarks/bench.rb=.
+over time. The benchmarks can be run from the project directory with `ruby
+benchmarks/bench.rb --version VERSION` where `VERSION` can be a released gem
+version or `local` to test the current working version.
 
-Note that the sections labeled =Calculating= is the only one we really care
-about across versions and the =Comparison= section is completely useless because
+Note that the sections labeled `Calculating` is the only one we really care
+about across versions and the `Comparison` section is completely useless because
 you're just comparing different arguments to the same function call.
 
 My general workflow is:
 
-1. Run the benchmarks for =HEAD=.
-2. Make whatever changes you'd like to make, or check out a different tag.
-3. Run the benchmarks again.
-4. Compare the =Calculating= sections from each respective position in version control.
+1. Make whatever changes you'd like to make.
+2. Run the benchmarks against those changes e.g. `ruby benchmarks/bench.rb
+   --version local`.
+3. Run the benchmarks against the latest release version e.g. `ruby
+   benchmarks/bench.rb --version 4.2.0`.
+4. Compare the `Calculating` sections from each set of results.
 
-** v3.1.0
+## v3.1.0
 
 The performance in this release compared to the previous version, v3.0.6, is
 effectively flat, which is fine. Compared to the previous major version, v2.0.0,
 performance has approximately quadrupled, which is pretty cool.
 
-#+begin_example
+``` example
 to_attributes
 Calculating -------------------------------------
               simple      1.204M (± 1.3%) i/s -      6.111M in   5.077247s
@@ -45,11 +48,11 @@ Calculating -------------------------------------
                empty      3.600M (± 1.3%) i/s -     18.122M in   5.034973s
               simple      1.713M (± 2.2%) i/s -      8.665M in   5.060961s
               nested      1.027M (± 1.8%) i/s -      5.139M in   5.006588s
-#+end_example
+```
 
-** v3.0.6
+## v3.0.6
 
-#+begin_example
+``` example
 to_attributes
 Calculating -------------------------------------
               simple      1.260M (± 0.6%) i/s -      6.348M in   5.036953s
@@ -73,11 +76,11 @@ Calculating -------------------------------------
                empty      3.682M (± 1.8%) i/s -     18.458M in   5.014521s
               simple      1.773M (± 0.6%) i/s -      8.961M in   5.055727s
               nested      1.069M (± 0.6%) i/s -      5.369M in   5.023035s
-#+end_example
+```
 
-** v2.0.0
+## v2.0.0
 
-#+begin_example
+``` example
 to_attributes
 Calculating -------------------------------------
               simple    239.926k (± 1.3%) i/s -      1.213M in   5.058548s
@@ -95,4 +98,4 @@ Calculating -------------------------------------
                empty      1.643M (± 0.6%) i/s -      8.295M in   5.047921s
               simple    447.341k (± 0.6%) i/s -      2.257M in   5.045563s
               nested    268.844k (± 1.5%) i/s -      1.352M in   5.031703s
-#+end_example
+```
