@@ -2,19 +2,15 @@
 # This is the top most config file.
 root = true
 
-# All files
 [*]
-
-# Unix-style newlines with a newline ending every file
 end_of_line = lf
 insert_final_newline = true
-
-# Character set
 charset = utf-8
-
-# Trim extra whitespace.
 trim_trailing_whitespace = true
 
-# Soft tabs and 2 spaces.
+[*.rb]
 indent_style = space
 indent_size = 2
+
+[*.{c,h}]
+indent_style = tab
