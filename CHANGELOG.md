@@ -1,5 +1,12 @@
 # Berns changelog
 
+## 4.3.0
+
+Version 4.3.0 contains a major refactor of string allocation functions,
+introducing a series of functions for handling strings in Berns and pushing
+memory allocation to Ruby by using Ruby's ruby_xmalloc, ruby_xfree, and
+ruby_xrealloc.
+
 ## 4.2.0
 
 Allow inlining `empty_value_to_attribute`.
