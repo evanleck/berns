@@ -14,12 +14,12 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 2.7.0'
   spec.required_rubygems_version = '>= 2.0'
 
-  spec.files = Dir['ext/**/*', 'lib/**/*', 'README.org', 'LICENSE.txt']
+  spec.files = Dir['ext/**/*', 'lib/**/*', 'README.md', 'LICENSE.txt']
   spec.require_paths = ['lib']
   spec.extensions = %w[ext/berns/extconf.rb]
 
   spec.metadata['bug_tracker_uri'] = "#{ spec.homepage }/issues"
-  spec.metadata['changelog_uri'] = "#{ spec.homepage }/blob/main/CHANGELOG.org"
+  spec.metadata['changelog_uri'] = "#{ spec.homepage }/blob/main/CHANGELOG.md"
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['rubygems_mfa_required'] = 'true'
   spec.metadata['source_code_uri'] = spec.homepage
