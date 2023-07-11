@@ -1,5 +1,11 @@
 # Berns changelog
 
+## 4.3.1
+
+Version 4.3.1 adds the `-march=native` and `-mtune=native` C flags and enables
+them by default. These can be disabled with `--disable-march-tune-native` when
+installing the gem.
+
 ## 4.3.0
 
 Version 4.3.0 contains a major refactor of string allocation functions,
