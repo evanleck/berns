@@ -11,4 +11,9 @@ append_cflags '-fno-strict-aliasing'
 append_cflags '-msse4'
 append_cflags '-std=c99'
 
+if enable_config('march-tune-native', true)
+  append_cflags '-march=native'
+  append_cflags '-mtune=native'
+end
+
 create_makefile 'berns/berns'
