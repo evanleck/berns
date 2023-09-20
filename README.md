@@ -25,6 +25,10 @@ Or install it yourself as:
 gem install berns
 ```
 
+*Note:* Berns is only tested on Ruby's MRI/CRuby interpreter version 2.7 and
+greater. Berns version 3.x and below support Ruby 2.5. Contributions are welcome
+to get JRuby or TruffleRuby working.
+
 ## Usage
 
 Note that all return string values will be UTF-8 encoded.
