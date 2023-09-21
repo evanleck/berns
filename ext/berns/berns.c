@@ -104,7 +104,7 @@ static VALUE external_sanitize(RB_UNUSED_VAR(VALUE self), VALUE string) {
 		return Qnil;
 	}
 
-	StringValue(string);
+	Check_Type(string, T_STRING);
 
 	size_t slen = RSTRING_LEN(string);
 	char *str = RSTRING_PTR(string);
@@ -161,7 +161,7 @@ static VALUE external_sanitize(RB_UNUSED_VAR(VALUE self), VALUE string) {
  *
  */
 static VALUE external_escape_html(RB_UNUSED_VAR(VALUE self), VALUE string) {
-	StringValue(string);
+	Check_Type(string, T_STRING);
 
 	uint8_t *dest = NULL;
 	size_t slen = RSTRING_LEN(string);
@@ -370,7 +370,7 @@ static char * to_attribute(VALUE attr, VALUE value) {
 			break;
 	}
 
-	StringValue(attr);
+	Check_Type(attr, T_STRING);
 
 	char *val = NULL;
 	VALUE str;
@@ -415,7 +415,7 @@ static VALUE external_to_attribute(RB_UNUSED_VAR(VALUE self), VALUE attr, VALUE 
 		attr = rb_sym2str(attr);
 	}
 
-	StringValue(attr);
+	Check_Type(attr, T_STRING);
 
 	char *val = to_attribute(attr, value);
 	VALUE rstring = rb_utf8_str_new_cstr(val);
@@ -500,7 +500,7 @@ static VALUE external_void_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VAL
 		tag = rb_sym2str(tag);
 	}
 
-	StringValue(tag);
+	Check_Type(tag, T_STRING);
 
 	char *string;
 
@@ -588,7 +588,7 @@ static VALUE external_element(int argc, VALUE *arguments, RB_UNUSED_VAR(VALUE se
 		tag = rb_sym2str(tag);
 	}
 
-	StringValue(tag);
+	Check_Type(tag, T_STRING);
 
 	CONTENT_FROM_BLOCK
 
