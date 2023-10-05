@@ -1,5 +1,10 @@
 # Berns changelog
 
+## 4.3.2
+
+Replace the use of `StringValue` with `Check_Type`, which more accurately
+reflects what it's used for.
+
 ## 4.3.1
 
 Version 4.3.1 adds the `-march=native` and `-mtune=native` C flags and enables
